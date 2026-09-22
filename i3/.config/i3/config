@@ -61,18 +61,13 @@ exec_always --no-startup-id $HOME/.config/i3/startup.sh
 # Mouse accel watchdog (self-guarding: flock singleton, exits if not on X)
 exec_always --no-startup-id $HOME/.config/i3/mouse-watch.sh
 
-# ── Workspaces → monitors ───────────────────────────────
-# 1-5 = DP-4 (main, 1920x1080@240)   6-10 = HDMI-0 (secondary, 1920x1080@60)
-workspace 1 output DP-4
-workspace 2 output DP-4
-workspace 3 output DP-4
-workspace 4 output DP-4
-workspace 5 output DP-4
-workspace 6 output HDMI-0
-workspace 7 output HDMI-0
-workspace 8 output HDMI-0
-workspace 9 output HDMI-0
-workspace 10 output HDMI-0
+# ── Machine-specific config ────────────────────────────
+# Monitor names, workspace→output mapping and anything else that differs
+# between machines live in ~/.config/i3/local.conf — NOT tracked in this repo,
+# so the same config works on the desktop and the laptop without conflicts.
+# See examples/local.conf in the repo. Missing file = no output bindings,
+# i3 still starts fine.
+include ~/.config/i3/local.conf
 
 for_window [class=".*"] border none
 
@@ -91,8 +86,8 @@ bindsym $mod+k focus up
 bindsym $mod+l focus right
 bindsym $mod+Left focus left, exec --no-startup-id ~/.local/bin/mouse-to-focused.sh
 bindsym $mod+Right focus right, exec --no-startup-id ~/.local/bin/mouse-to-focused.sh
-bindsym $mod+Shift+Left move container to output DP-4, focus output DP-4
-bindsym $mod+Shift+Right move container to output HDMI-0, focus output HDMI-0
+# Moving windows between outputs is machine-specific — see ~/.config/i3/local.conf
+# (shipped as examples/local.conf: $mod+Shift+Left/Right → output 1 / output 2)
 
 # ── Move windows ────────────────────────────────────────
 bindsym $mod+Shift+h move left

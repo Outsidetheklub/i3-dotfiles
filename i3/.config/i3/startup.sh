@@ -7,12 +7,14 @@
 # Wait for X to settle
 sleep 1
 
-# Monitors: DP-4 (main, primary) + HDMI-0 (secondary, to the right, 1920x1080@60).
-# Workspaces 1-5 live on DP-4, 6-10 on HDMI-0 (see the i3 config).
-# i3 does NOT enable outputs on its own — without this HDMI-0 stays black.
-if xrandr --query 2>/dev/null | grep -q '^HDMI-0 connected'; then
-    xrandr --output HDMI-0 --mode 1920x1080 --rate 60.00 --right-of DP-4 2>/dev/null \
-        || xrandr --output HDMI-0 --auto --right-of DP-4 2>/dev/null
+# Machine-specific display setup lives OUTSIDE this repo (so the same files work
+# on every machine): ~/.config/i3/display.sh — copy examples/display.sh and edit.
+# It's optional: nothing happens if the file isn't there.
+#
+# i3 does NOT enable outputs by itself, so on a multi-monitor machine this file
+# is what turns the second screen on.
+if [ -x "$HOME/.config/i3/display.sh" ]; then
+    "$HOME/.config/i3/display.sh"
 fi
 
 # Background: none — solid black. i3/X have no wallpaper of their own; the root

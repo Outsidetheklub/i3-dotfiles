@@ -5,12 +5,16 @@ default fonts, no effects. It's the stable fallback I keep around for when
 Wayland/niri misbehaves, so it's built for things that must not break —
 monitors, mouse acceleration, keybinds — not for looks.
 
+Machine-specific bits (monitor names, workspace→output mapping) are **not
+tracked here** — they live in `~/.config/i3/local.conf` + `~/.config/i3/display.sh`,
+so the same repo works on the desktop and the laptop. Templates are in `examples/`.
+
 ## What's in here
 
 | Path | Goes to | What it does |
 |---|---|---|
-| `i3/.config/i3/config` | `~/.config/i3/` | the whole WM config — keybinds, workspace→monitor mapping, autostart |
-| `i3/.config/i3/startup.sh` | `~/.config/i3/` | displays (xrandr), polkit agent, flameshot, gamepad idle guard |
+| `i3/.config/i3/config` | `~/.config/i3/` | the whole WM config — keybinds, autostart. Includes `local.conf` for machine-specific parts |
+| `i3/.config/i3/startup.sh` | `~/.config/i3/` | polkit agent, flameshot, gamepad idle guard, calls `display.sh` if present |
 | `i3/.config/i3/mouse-watch.sh` | `~/.config/i3/` | watchdog that keeps libinput mouse acceleration off (games reset it) |
 | `i3status/.config/i3status/config` | `~/.config/i3status/` | bar modules: wifi, disk free, RAM used/available, clock |
 | `rofi/.config/rofi/config.rasi` | `~/.config/rofi/` | launcher — black, centered, no icons. Also used by the power menu |
@@ -19,27 +23,83 @@ monitors, mouse acceleration, keybinds — not for looks.
 | `kitty/.config/kitty/kitty.conf` | `~/.config/kitty/` | terminal — default colours on purpose, CSD title bar hidden |
 | `local-bin/.local/bin/power-menu.sh` | `~/.local/bin/` | rofi power menu ($mod+Escape) |
 | `xprofile/.xprofile` | `~/.xprofile` | repaints the root window black (kills the ghost SDDM screen) |
-| `system-files/99-mouse-noaccel.conf` | `/etc/X11/xorg.conf.d/` | the actual fix for mouse acceleration (needs root, see below) |
+| `system-files/99-mouse-noaccel.conf` | `/etc/X11/xorg.conf.d/` | the actual fix for mouse acceleration (needs root) |
+| `examples/local.conf` | `~/.config/i3/local.conf` | template for machine-specific i3 config |
+| `examples/display.sh` | `~/.config/i3/display.sh` | template for machine-specific xrandr setup |
+
+`examples/` is not stowed — it's reference material.
 
 ## Install
 
 ```sh
-git clone https://github.com/outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
+git clone git@github.com:Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
 cd ~/i3-dotfiles
 ./install.sh
 ```
 
 `install.sh` symlinks everything with GNU Stow (`stow --restow --target=$HOME`).
 It refuses to clobber real files — if you already have e.g. `~/.config/i3/config`
-as a real file, move it out of the way first.
-
-Packages: see `packages.txt`.
-
-The mouse-accel file is **the only root-owned part** and is not stowed:
+as a real file (or symlinked by another dotfiles repo), move it away first:
 
 ```sh
-sudo cp system-files/99-mouse-noaccel.conf /etc/X11/xorg.conf.d/
+cd ~/dotfiles && stow -D i3 kitty picom     # if an older repo already stows these
 ```
+
+Then the two manual steps:
+
+```sh
+# 1. mouse acceleration (root, not stowed)
+sudo cp system-files/99-mouse-noaccel.conf /etc/X11/xorg.conf.d/
+
+# 2. machine-specific config
+cp examples/local.conf  ~/.config/i3/local.conf     # then edit output names
+cp examples/display.sh  ~/.config/i3/display.sh     # then edit, chmod +x
+$EDITOR ~/.config/i3/local.conf ~/.config/i3/display.sh
+```
+
+Packages: `packages.txt` (`sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')`).
+
+## Machine-specific config
+
+`~/.config/i3/config` ends with `include ~/.config/i3/local.conf`. That file is
+**not tracked**, so pulling updates never conflicts, and a machine with no
+`local.conf` still starts i3 fine (it just gets no output bindings — verified).
+
+`local.conf` holds:
+- `workspace N output <name>` lines
+- `$mod+Shift+Left/Right` move-to-output binds
+- anything else that's machine-only
+
+`display.sh` holds the `xrandr` calls. **This is the one that actually matters:**
+neither i3 nor X enables extra outputs, so without it a second monitor stays
+black no matter what the i3 config says.
+
+Find the names first: `xrandr --query | grep ' connected'`.
+
+## Recreating this on another machine (e.g. the laptop)
+
+```sh
+# packages
+sudo pacman -S --needed git stow
+git clone git@github.com:Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
+cd ~/i3-dotfiles
+sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')   # + AUR: zen-browser-bin, spotify-launcher
+
+# un-stow any older i3/kitty/picom from the other dotfiles repo, then:
+./install.sh
+sudo cp system-files/99-mouse-noaccel.conf /etc/X11/xorg.conf.d/
+cp examples/local.conf ~/.config/i3/local.conf && cp examples/display.sh ~/.config/i3/display.sh
+chmod +x ~/.config/i3/display.sh
+# edit both for this machine's outputs, then log out and pick i3 in SDDM
+# check first: i3 -C -c ~/.config/i3/config
+```
+
+Laptop extras worth adding:
+- **Battery in the bar** (dropped here, it's a desktop): add
+  `order += "battery all"` and `battery all { format = "%status %percentage %remaining" }`
+  to `~/.config/i3status/config`.
+- **Projector** (`$mod+Shift+p` / `$mod+Shift+x`): the two binds are commented at the
+  bottom of `i3/.config/i3/config`; the script is in `local-bin`.
 
 ## Keybinds
 
@@ -61,12 +121,6 @@ sudo cp system-files/99-mouse-noaccel.conf /etc/X11/xorg.conf.d/
 
 ## Things worth knowing
 
-- **Monitors are hardcoded**: `DP-4` (main) and `HDMI-0` (secondary, right of it).
-  Workspaces 1–5 live on DP-4, 6–10 on HDMI-0. Change the names in
-  `i3/.config/i3/config` and `startup.sh` on a different machine
-  (`xrandr --query` to find them).
-- **i3 does not enable outputs by itself** — without the `xrandr` line in
-  `startup.sh`, the second monitor stays black.
 - **Autostart is duplicate-guarded**: `picom`/`redshift`/`dunst` are started with
   `pgrep -x <name> || <name>`, and `mouse-watch.sh` has a `flock` singleton, so
   `$mod+Shift+r` brings back anything that died without stacking up copies.
@@ -75,4 +129,7 @@ sudo cp system-files/99-mouse-noaccel.conf /etc/X11/xorg.conf.d/
 - **No Nerd Fonts are required** — the power menu uses plain words, so default
   `monospace` everywhere works.
 - Wallpaper: none, solid black (`xsetroot`). Uncomment the `feh` line in
-  `startup.sh` if you want an image.
+  `i3/.config/i3/startup.sh` if you want an image.
+- Mouse accel has two layers on purpose: the driver-level `99-mouse-noaccel.conf`
+  (permanent, all devices) plus the `mouse-watch.sh` watchdog, because Proton
+  games reset the setting at runtime.
