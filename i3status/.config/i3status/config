@@ -1,0 +1,37 @@
+# i3status config — Vasileios (2026-09-22)
+# Personal copy so we never have to touch /etc/i3status.conf.
+# Deliberate changes vs. the system default:
+#   • NO IP addresses anywhere (was: W: (86% at Telia-48FE6A) 192.168.1.228)
+#   • ipv6 module dropped ("no IPv6" noise)
+#   • battery module dropped (this is a desktop — it only ever said "No battery")
+#   • ethernet module dropped (wifi only → it only ever said "E: down")
+
+general {
+        colors = true
+        interval = 5
+}
+
+order += "wireless _first_"
+order += "disk /"
+order += "memory"
+order += "tztime local"
+
+# NB: %quality already includes its own % sign — don't add another one.
+wireless _first_ {
+        format_up = "W: %essid %quality"
+        format_down = "W: down"
+}
+
+disk "/" {
+        format = "%avail"
+}
+
+memory {
+        format = "%used | %available"
+        threshold_degraded = "1G"
+        format_degraded = "MEMORY < %available"
+}
+
+tztime local {
+        format = "%H:%M %a %d %b"
+}

@@ -1,0 +1,238 @@
+#  ╔═══════════════════════════════════════════════════════╗
+#  ║            i3 config — Vasileios (fresh)              ║
+#  ╚═══════════════════════════════════════════════════════╝
+#
+#  Rebuilt from zero 2026-09-22. Deliberately carried over:
+#    • keybinds
+#    • monitor / workspace layout (DP-4 + HDMI-0)
+#    • mouse acceleration = off
+#
+#  Quickshell is OUT: no autostart, no qs binds, no floating rules.
+#  Launcher + power menu are back on rofi, which uses the single minimal
+#  theme in ~/.config/rofi/config.rasi (black, centered, no icons).
+#  Everything else is stock/black: kitty default colours, i3bar default
+#  colours, dunst default, picom with no effects.
+#
+#  Old config is still in git:  git -C ~/dotfiles log -p -- i3/
+#  (backup copy: /tmp/i3-reset-2026-09-22/config)
+
+# ── Modifier & programs ─────────────────────────────────
+set $mod Mod4
+set $terminal kitty
+set $browser zen-browser
+set $editor vscodium
+set $filemanager thunar
+
+# Default family (fontconfig "monospace" → Noto Sans Mono). No Nerd Font —
+# the power menu uses plain words now. Size kept as before.
+font pango:monospace 11
+
+# ── Behaviour ───────────────────────────────────────────
+floating_modifier $mod
+focus_follows_mouse no
+tiling_drag modifier titlebar
+
+default_border none
+new_window none
+new_float none
+
+# Keyboard layout: Swedish is set system-wide in
+# /etc/X11/xorg.conf.d/00-keyboard.conf → no setxkbmap needed here.
+
+# Mouse acceleration: OFF system-wide in
+# /etc/X11/xorg.conf.d/99-mouse-noaccel.conf (libinput AccelProfile flat,
+# every pointer device, applies on hotplug/reconnect).
+# mouse-watch.sh re-applies it every 5s as a watchdog because Proton games
+# like to flip it back. → nothing mouse-related belongs in this file.
+
+# ── Autostart ───────────────────────────────────────────
+# Daemons are duplicate-guarded (pgrep / self-flock) so $mod+Shift+r (restart)
+# brings back anything that died without stacking up extra copies.
+# Clear the ghost SDDM screen
+exec_always --no-startup-id xsetroot -solid "#000000"
+# Compositing — shadows off, xrender backend, vsync (~/.config/picom/picom.conf)
+exec_always --no-startup-id pgrep -x picom >/dev/null || picom -b
+# Night light (Stockholm)
+exec_always --no-startup-id pgrep -x redshift >/dev/null || redshift -l 59.33:18.07 &
+# Notification daemon — needed now that quickshell is gone
+exec_always --no-startup-id pgrep -x dunst >/dev/null || dunst
+# Wallpaper, polkit agent, flameshot retry, gamepad idle guard
+exec_always --no-startup-id $HOME/.config/i3/startup.sh
+# Mouse accel watchdog (self-guarding: flock singleton, exits if not on X)
+exec_always --no-startup-id $HOME/.config/i3/mouse-watch.sh
+
+# ── Workspaces → monitors ───────────────────────────────
+# 1-5 = DP-4 (main, 1920x1080@240)   6-10 = HDMI-0 (secondary, 1920x1080@60)
+workspace 1 output DP-4
+workspace 2 output DP-4
+workspace 3 output DP-4
+workspace 4 output DP-4
+workspace 5 output DP-4
+workspace 6 output HDMI-0
+workspace 7 output HDMI-0
+workspace 8 output HDMI-0
+workspace 9 output HDMI-0
+workspace 10 output HDMI-0
+
+for_window [class=".*"] border none
+
+# ── Launcher / apps ─────────────────────────────────────
+# rofi uses its own minimal theme in ~/.config/rofi/config.rasi (no -theme flag).
+bindsym $mod+space exec rofi -show drun
+bindsym $mod+b exec $browser
+bindsym $mod+Return exec $terminal
+bindsym $mod+e exec $filemanager
+bindsym $mod+p exec pavucontrol
+
+# ── Window navigation ───────────────────────────────────
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
+bindsym $mod+Left focus left, exec --no-startup-id ~/.local/bin/mouse-to-focused.sh
+bindsym $mod+Right focus right, exec --no-startup-id ~/.local/bin/mouse-to-focused.sh
+bindsym $mod+Shift+Left move container to output DP-4, focus output DP-4
+bindsym $mod+Shift+Right move container to output HDMI-0, focus output HDMI-0
+
+# ── Move windows ────────────────────────────────────────
+bindsym $mod+Shift+h move left
+bindsym $mod+Shift+j move down
+bindsym $mod+Shift+k move up
+bindsym $mod+Shift+l move right
+
+# ── Window management ───────────────────────────────────
+bindsym $mod+q kill
+bindsym $mod+f fullscreen toggle
+bindsym $mod+Shift+space floating toggle
+bindsym $mod+Ctrl+space focus mode_toggle
+
+# ── Layout ──────────────────────────────────────────────
+# ($mod+e used to be "layout toggle split" — now Thunar. The split toggle
+#  still lives on $mod+Ctrl+Backslash below.)
+bindsym $mod+s layout stacking
+bindsym $mod+w layout tabbed
+
+# ── Split ───────────────────────────────────────────────
+bindsym $mod+Ctrl+h split h
+bindsym $mod+Ctrl+v split v
+bindsym $mod+Ctrl+Backslash layout toggle split
+
+# ── Scratchpad ──────────────────────────────────────────
+bindsym $mod+Shift+minus move scratchpad
+bindsym $mod+minus scratchpad show
+
+# ── Workspace switching ─────────────────────────────────
+bindsym $mod+1 workspace 1
+bindsym $mod+2 workspace 2
+bindsym $mod+3 workspace 3
+bindsym $mod+4 workspace 4
+bindsym $mod+5 workspace 5
+bindsym $mod+6 workspace 6
+bindsym $mod+7 workspace 7
+bindsym $mod+8 workspace 8
+bindsym $mod+9 workspace 9
+bindsym $mod+0 workspace 10
+
+# ── Move to workspace ───────────────────────────────────
+bindsym $mod+Shift+1 move container to workspace 1
+bindsym $mod+Shift+2 move container to workspace 2
+bindsym $mod+Shift+3 move container to workspace 3
+bindsym $mod+Shift+4 move container to workspace 4
+bindsym $mod+Shift+5 move container to workspace 5
+bindsym $mod+Shift+6 move container to workspace 6
+bindsym $mod+Shift+7 move container to workspace 7
+bindsym $mod+Shift+8 move container to workspace 8
+bindsym $mod+Shift+9 move container to workspace 9
+bindsym $mod+Shift+0 move container to workspace 10
+
+# ── Move to workspace with arrow keys ───────────────────
+bindsym $mod+Ctrl+Shift+Left move container to workspace prev
+bindsym $mod+Ctrl+Shift+Right move container to workspace next
+
+# ── Resize mode ─────────────────────────────────────────
+mode "resize" {
+    bindsym h resize shrink width 10 px or 10 ppt
+    bindsym j resize grow height 10 px or 10 ppt
+    bindsym k resize shrink height 10 px or 10 ppt
+    bindsym l resize grow width 10 px or 10 ppt
+
+    bindsym Left resize shrink width 10 px or 10 ppt
+    bindsym Down resize grow height 10 px or 10 ppt
+    bindsym Up resize shrink height 10 px or 10 ppt
+    bindsym Right resize grow width 10 px or 10 ppt
+
+    bindsym Return mode default
+    bindsym Escape mode default
+    bindsym $mod+r mode default
+}
+bindsym $mod+r mode "resize"
+
+# ── Media keys ──────────────────────────────────────────
+bindsym XF86AudioRaiseVolume exec wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+
+bindsym XF86AudioLowerVolume exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+bindsym XF86AudioMute exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+bindsym XF86AudioMicMute exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+bindsym XF86AudioPlay exec playerctl play-pause
+bindsym XF86AudioNext exec playerctl next
+bindsym XF86AudioPrev exec playerctl previous
+bindsym XF86MonBrightnessUp exec brightnessctl set 5%+
+bindsym XF86MonBrightnessDown exec brightnessctl set 5%-
+
+# ── Screenshot ──────────────────────────────────────────
+bindsym Print exec flameshot full
+bindsym $mod+Shift+s exec flameshot gui
+
+# ── Spotify ─────────────────────────────────────────────
+bindsym $mod+m exec spotify-launcher
+
+# ── Power menu (rofi) ───────────────────────────────────
+bindsym $mod+Escape exec ~/.local/bin/power-menu.sh
+
+# ── Reload / restart / exit ─────────────────────────────
+bindsym $mod+Shift+c reload
+bindsym $mod+Shift+r restart
+bindsym $mod+Shift+e exec i3-msg exit
+
+# ── Projector / external display (laptop) ───────────────
+# ⚠️ projector.sh is NOT installed on this machine — these two did nothing
+#    here. Left in so they work on the laptop; delete if you don't want them.
+# bindsym $mod+Shift+p exec --no-startup-id $HOME/.local/bin/projector.sh
+# bindsym $mod+Shift+x exec --no-startup-id $HOME/.local/bin/projector.sh extend
+
+
+# ── Bar (i3bar + i3status) ───────────────────────────────
+# Status modules come from ~/.config/i3status/config. Colours are i3bar's
+# stock defaults (black bar, light text) — nothing themed here.
+bar {
+    status_command i3status
+    position bottom
+    font pango:monospace 11
+    workspace_buttons yes
+    strip_workspace_numbers no
+    binding_mode_indicator yes
+
+    # Black + grey. i3's stock colours put a blue (#285577) block behind the
+    # focused workspace; this keeps it greyscale instead. Delete this block to
+    # go back to i3's defaults.
+    colors {
+        background         #000000
+        statusline         #dddddd
+        separator          #000000
+        focused_workspace  #303030 #303030 #ffffff
+        active_workspace   #000000 #000000 #ffffff
+        inactive_workspace #000000 #000000 #888888
+        urgent_workspace   #303030 #303030 #ff5555
+        binding_mode       #303030 #303030 #ffffff
+    }
+}
+
+
+# ════════════════════════════════════════════════════════
+#  EXTRAS — uncomment if wanted
+# ════════════════════════════════════════════════════════
+
+# ── Other rofi modi from the old setup (not bound right now) ──
+# $mod+v      → clipboard history (greenclip isn't installed; cliphist is,
+#               and there was a cliphist-rofi script before)
+#
+# bindsym $mod+v exec pkill rofi || greenclip print | rofi -dmenu -p "Clipboard"

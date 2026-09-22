@@ -1,0 +1,30 @@
+# Packages this setup needs (Arch).
+# Install:  sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')
+
+i3-wm
+i3status
+i3lock
+picom
+redshift
+dunst
+rofi
+kitty
+thunar
+pavucontrol
+polkit-gnome
+flameshot
+playerctl
+brightnessctl
+wireplumber
+xorg-xrandr
+xorg-xinput
+xorg-xsetroot
+xdotool
+stow
+
+# Not in the official repos:
+#   zen-browser-bin (AUR)  - default browser ($mod+b)
+#   spotify-launcher (AUR) - $mod+m
+#
+# Deliberately NOT needed: any Nerd Font, feh (no wallpaper by default),
+# cliphist/xclip (no clipboard history in this setup).

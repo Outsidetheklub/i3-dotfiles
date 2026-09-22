@@ -1,0 +1,155 @@
+/* Font: deliberately unset → rofi's own default (monospace). Set `font:` in the
+   configuration block above if you ever want something specific. */
+
+configuration {
+    modi: "drun,run";
+    show-icons: false;
+    drun-display-format: "{name}";
+}
+
+* {
+    bg:        #000000;
+    bg-sel:    #303030;
+    fg:        #dddddd;
+    fg-sel:    #ffffff;
+
+    /* rofi's default theme drives widget state from these variables — if they
+       aren't overridden, rows render Solarized-Light no matter what
+       background-color says. */
+    normal-background:           #000000;
+    normal-foreground:           #dddddd;
+    alternate-normal-background: #000000;
+    alternate-normal-foreground: #dddddd;
+    selected-normal-background:  #303030;
+    selected-normal-foreground:  #ffffff;
+    urgent-background:           #000000;
+    urgent-foreground:           #ff5555;
+    alternate-urgent-background: #000000;
+    alternate-urgent-foreground: #ff5555;
+    selected-urgent-background:  #ff5555;
+    selected-urgent-foreground:  #000000;
+    active-background:           #303030;
+    active-foreground:           #ffffff;
+    alternate-active-background: #303030;
+    alternate-active-foreground: #ffffff;
+    selected-active-background:  #303030;
+    selected-active-foreground:  #ffffff;
+    foreground:                  #dddddd;
+    background:                  #000000;
+    lightbg:                     #000000;
+    lightfg:                     #303030;
+
+    background-color: @bg;
+    text-color:       @fg;
+    border:           0;
+    border-color:     @bg;
+    separatorcolor:   @bg;
+    spacing:          0;
+    padding:          0;
+    margin:           0;
+    scrollbar:        false;
+    highlight:        bold;
+}
+
+window {
+    background-color: @bg;
+    border:           0;
+    border-radius:    0;
+    location:         center;
+    width:            25em;
+    padding:          0;
+    spacing:          0;
+    children:         [mainbox];
+}
+
+mainbox {
+    background-color: @bg;
+    border:           0;
+    padding:          0;
+    spacing:          0;
+    children:         [inputbar, listview];
+}
+
+inputbar {
+    background-color: @bg;
+    text-color:       @fg;
+    padding:          8px 12px;
+    spacing:          8px;
+    children:         [prompt, entry];
+}
+
+prompt {
+    background-color: @bg;
+    text-color:       @fg;
+    padding:          0;
+}
+
+entry {
+    background-color: @bg;
+    text-color:       @fg;
+    padding:          0;
+}
+
+listview {
+    background-color: @bg;
+    border:           0;
+    padding:          0;
+    spacing:          0;
+    lines:            8;
+    scrollbar:        false;
+    fixed-height:     false;
+}
+
+element {
+    background-color: @bg;
+    text-color:       @fg;
+    border:           0;
+    padding:          6px 12px;
+    spacing:          0;
+}
+
+element selected {
+    background-color: @bg-sel;
+    text-color:       @fg-sel;
+}
+
+element-text {
+    background-color: inherit;
+    text-color:       inherit;
+    vertical-align:    0.5;
+    horizontal-align:  0.0;
+}
+
+element-icon {
+    size: 0;
+}
+
+textbox {
+    background-color: @bg;
+    text-color:       @fg;
+    padding:          8px 12px;
+}
+
+message {
+    background-color: @bg;
+    text-color:       @fg;
+    border:           0;
+    padding:          8px 12px;
+}
+
+mode-switcher {
+    background-color: @bg;
+    text-color:       @fg;
+    spacing:          0;
+}
+
+button {
+    background-color: @bg;
+    text-color:       @fg;
+    padding:          4px 8px;
+}
+
+button selected {
+    background-color: @bg-sel;
+    text-color:       @fg-sel;
+}
