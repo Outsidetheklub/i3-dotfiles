@@ -11,7 +11,9 @@ if ! command -v stow >/dev/null 2>&1; then
     exit 1
 fi
 
-PACKAGES="i3 i3status rofi dunst picom kitty local-bin xprofile"
+# NOTE: kitty is intentionally NOT here — its config lives in my main dotfiles repo
+# (terminal config shared with the laptop). This repo only needs kitty installed.
+PACKAGES="i3 i3status rofi dunst picom local-bin xprofile"
 
 for pkg in $PACKAGES; do
     [ -d "$pkg" ] || { echo "missing package dir: $pkg" >&2; exit 1; }
