@@ -24,7 +24,7 @@ monitors, mouse acceleration, keybinds — not for looks.
 ## Install
 
 ```sh
-git clone <this repo> ~/i3-dotfiles
+git clone https://github.com/outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
 cd ~/i3-dotfiles
 ./install.sh
 ```
