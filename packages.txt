@@ -21,6 +21,7 @@ xorg-xinput
 xorg-xsetroot
 xdotool
 stow
+adw-gtk-theme
 
 # Not in the official repos:
 #   zen-browser-bin (AUR)  - default browser ($mod+b)
