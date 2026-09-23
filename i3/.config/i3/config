@@ -29,7 +29,7 @@ font pango:monospace 11
 
 # ── Behaviour ───────────────────────────────────────────
 floating_modifier $mod
-focus_follows_mouse no
+focus_follows_mouse yes
 tiling_drag modifier titlebar
 
 default_border none
