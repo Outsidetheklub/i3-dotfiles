@@ -4,7 +4,9 @@
 #   • NO IP addresses anywhere (was: W: (86% at Telia-48FE6A) 192.168.1.228)
 #   • ipv6 module dropped ("no IPv6" noise)
 #   • battery module ADDED for the laptop (this repo is shared with the desktop:
-#     there the module just prints nothing when no battery is present)
+#     format_down = "" keeps it invisible there — i3status has no
+#     conditional modules, and the default format_down is the literal
+#     text "No battery", which we do not want on the desktop bar.)
 #   • ethernet module dropped (wifi only → it only ever said "E: down")
 
 general {
@@ -42,6 +44,9 @@ tztime local {
 # with no battery.
 battery all {
         format = "%status %percentage %remaining"
+        # No battery present (desktop) -> render an empty block (invisible on
+        # the black bar) instead of i3status' default "No battery" text.
+        format_down = ""
         status_chr = "Charging"
         status_bat = "Discharging"
         status_full = "Full"

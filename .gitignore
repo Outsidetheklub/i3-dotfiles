@@ -1,0 +1,8 @@
+# uv / tool-runner artefacts — NOT config.
+# uv itself comes from pacman (/usr/bin/uv) and writes these shims here.
+# Machine-generated, so: keep the files locally (the stow symlinks still work)
+# but never commit them. Tracking them once put a 48 MB binary in this repo.
+local-bin/.local/bin/uv
+local-bin/.local/bin/uvx
+local-bin/.local/bin/env
+local-bin/.local/bin/env.fish

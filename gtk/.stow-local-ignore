@@ -1,0 +1,7 @@
+# Machine-local GTK files — created/edited by apps and theming tools on each
+# box, not stowed. Listed here so `stow gtk` (and install.sh) can't abort on
+# them: one conflict aborts the WHOLE stow run.
+\.config/gtk-3\.0/bookmarks$
+\.config/gtk-3\.0/noctalia\.css$
+\.config/gtk-4\.0/noctalia\.css$
+\.stow-local-ignore$
