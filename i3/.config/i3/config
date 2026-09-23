@@ -79,6 +79,10 @@ bindsym $mod+Return exec $terminal
 bindsym $mod+e exec $filemanager
 bindsym $mod+p exec pavucontrol
 
+# Bluetooth menu — rofi front-end for bluetoothctl. Script lives in
+# ~/.local/bin/bluetooth-rofi.sh (main dotfiles repo: local-bin/).
+bindsym $mod+Shift+b exec --no-startup-id ~/.local/bin/bluetooth-rofi.sh
+
 # ── Window navigation ───────────────────────────────────
 bindsym $mod+h focus left
 bindsym $mod+j focus down

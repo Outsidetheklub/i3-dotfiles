@@ -3,7 +3,8 @@
 # Deliberate changes vs. the system default:
 #   • NO IP addresses anywhere (was: W: (86% at Telia-48FE6A) 192.168.1.228)
 #   • ipv6 module dropped ("no IPv6" noise)
-#   • battery module dropped (this is a desktop — it only ever said "No battery")
+#   • battery module ADDED for the laptop (this repo is shared with the desktop:
+#     there the module just prints nothing when no battery is present)
 #   • ethernet module dropped (wifi only → it only ever said "E: down")
 
 general {
@@ -11,6 +12,7 @@ general {
         interval = 5
 }
 
+order += "battery all"
 order += "wireless _first_"
 order += "disk /"
 order += "memory"
@@ -34,4 +36,15 @@ memory {
 
 tztime local {
         format = "%H:%M %a %d %b"
+}
+
+# Laptop only. %status = Full/Charging/Discharging; hidden entirely on a machine
+# with no battery.
+battery all {
+        format = "%status %percentage %remaining"
+        status_chr = "Charging"
+        status_bat = "Discharging"
+        status_full = "Full"
+        integer_battery_capacity = true
+        low_threshold = 15
 }

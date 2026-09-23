@@ -20,13 +20,18 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `rofi/.config/rofi/config.rasi` | `~/.config/rofi/` | launcher — black, centered, no icons. Also used by the power menu |
 | `dunst/.config/dunst/dunstrc` | `~/.config/dunst/` | notifications — flat black |
 | `picom/.config/picom/picom.conf` | `~/.config/picom/` | compositing + vsync only, no shadows/fading/transparency |
-| `local-bin/.local/bin/power-menu.sh` | `~/.local/bin/` | rofi power menu ($mod+Escape) |
+| `~/.local/bin/*` scripts | main **dotfiles** repo | rofi power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`) |
 | `xprofile/.xprofile` | `~/.xprofile` | repaints the root window black (kills the ghost SDDM screen) |
 | `system-files/99-mouse-noaccel.conf` | `/etc/X11/xorg.conf.d/` | the actual fix for mouse acceleration (needs root) |
 | `examples/local.conf` | `~/.config/i3/local.conf` | template for machine-specific i3 config |
 | `examples/display.sh` | `~/.config/i3/display.sh` | template for machine-specific xrandr setup |
 
 `examples/` is not stowed — it's reference material.
+
+The `~/.local/bin` scripts (`power-menu.sh`, `bluetooth-rofi.sh`, `projector.sh`, …)
+live in the main **dotfiles** repo under `local-bin/` — that repo owns `~/.local/bin`.
+This repo used to ship its own `local-bin`, which double-managed the same directory
+(and lost on the laptop, since `~/.local/bin` ends up as a symlink into dotfiles).
 
 **Not included on purpose:** `kitty.conf` lives in my main `dotfiles` repo (terminal
 config, shared with the laptop), and the wallpaper images aren't tracked at all.
@@ -102,7 +107,8 @@ Laptop extras worth adding:
   `order += "battery all"` and `battery all { format = "%status %percentage %remaining" }`
   to `~/.config/i3status/config`.
 - **Projector** (`$mod+Shift+p` / `$mod+Shift+x`): the two binds are commented at the
-  bottom of `i3/.config/i3/config`; the script is in `local-bin`.
+  bottom of `i3/.config/i3/config`; the script lives in the main **dotfiles** repo
+  (`local-bin/.local/bin/projector.sh`).
 
 ## Keybinds
 
@@ -112,6 +118,7 @@ Laptop extras worth adding:
 |---|---|
 | `$mod+Return` / `$mod+b` | kitty / browser |
 | `$mod+e` / `$mod+p` | Thunar / pavucontrol |
+| `$mod+Shift+b` | Bluetooth menu (rofi → bluetoothctl) |
 | `$mod+space` / `$mod+Escape` | rofi launcher / rofi power menu |
 | `$mod+h/j/k/l` | focus (arrows too) |
 | `$mod+Shift+h/j/k/l` | move window |
