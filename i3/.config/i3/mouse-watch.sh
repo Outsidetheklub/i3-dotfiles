@@ -21,11 +21,23 @@ lock="/tmp/.mouse-watch-$(printf '%s' "$DISPLAY" | tr -d ':/').lock"
 exec 9>"$lock"
 flock -n 9 || exit 0
 
+# Pointer speed, applied on top of the flat (no-acceleration) profile.
+# 0 = default 1:1; positive = faster (libinput range -1..1). Tweak to taste.
+# Touchpads feel a given value less than mice (libinput applies a constant
+# deceleration factor to touchpads), so they get their own knob.
+MOUSE_SPEED="0.3"
+TOUCHPAD_SPEED="1.0"
+
 while true; do
     xinput list --short 2>/dev/null \
-        | sed -n 's/.*id=\([0-9]*\).*/\1/p' \
-        | while read -r id; do
-            xinput set-prop "$id" "libinput Accel Speed" 0 2>/dev/null
+        | while read -r line; do
+            id=$(printf '%s' "$line" | sed -n 's/.*id=\([0-9]*\).*/\1/p')
+            [ -n "$id" ] || continue
+            case "$line" in
+                *ouchpad*) spd="$TOUCHPAD_SPEED" ;;
+                *)         spd="$MOUSE_SPEED" ;;
+            esac
+            xinput set-prop "$id" "libinput Accel Speed" "$spd" 2>/dev/null
             xinput set-prop "$id" "libinput Accel Profile Enabled" 0, 1, 0 2>/dev/null
         done
     sleep 5
