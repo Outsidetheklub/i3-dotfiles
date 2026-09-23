@@ -1,4 +1,7 @@
 #!/bin/sh
-# Clear ghost SDDM screen
+# Clear ghost SDDM screen (mainly an nvidia thing — kept for the home desktop).
 sleep 0.5
 xsetroot -solid "#000000"
+
+# Make Flatpak apps show up in rofi and other desktop tools
+[ -r /etc/profile.d/flatpak.sh ] && . /etc/profile.d/flatpak.sh

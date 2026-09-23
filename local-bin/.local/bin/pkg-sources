@@ -1,0 +1,286 @@
+#!/usr/bin/env bash
+#
+# pkg-sources — show where your installed software comes from.
+#
+# Classifies every installed package by origin:
+#   pacman [repo]   official or custom pacman repositories (core, extra,
+#                   multilib, cidercollective, ...)
+#   AUR             packages from the Arch User Repository (verified via
+#                   the AUR RPC API, batched — no slow per-package calls)
+#   local           foreign packages NOT found in the AUR (manual builds,
+#                   private PKGBUILDs, downloaded binaries)
+#   flatpak [remote] Flatpak applications (system + user, shows remote)
+#   snap            Snap packages (if snapd is installed)
+#
+# Usage:
+#   pkg-sources                 full inventory, grouped by source
+#   pkg-sources --gui           only apps with a .desktop launcher
+#   pkg-sources --aur           only AUR packages
+#   pkg-sources --source extra  only packages from a given source
+#                               (substring match: extra, aur, flathub, ...)
+#   pkg-sources --count         summary: how many packages per source
+#   pkg-sources --json          machine-readable output (JSON array)
+#   pkg-sources --no-aur-check  skip the AUR API lookup (offline use)
+#
+# Exit status: 0 on success, 1 on error.
+
+set -uo pipefail
+
+VERSION="1.1.0"
+
+# ----------------------------------------------------------------------
+# Helpers
+# ----------------------------------------------------------------------
+
+die() { echo "pkg-sources: $*" >&2; exit 1; }
+
+usage() {
+    sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
+    echo
+    echo "Version $VERSION — MIT licensed."
+}
+
+have() { command -v "$1" >/dev/null 2>&1; }
+
+# ----------------------------------------------------------------------
+# Options
+# ----------------------------------------------------------------------
+
+MODE="full"        # full | gui | aur
+FILTER=""          # --source substring filter
+COUNT_ONLY=0
+JSON=0
+AUR_CHECK=1
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --gui)          MODE="gui" ;;
+        --aur)          MODE="aur" ;;
+        --source)       shift; FILTER="${1:-}" ;;
+        --count)        COUNT_ONLY=1 ;;
+        --json)         JSON=1 ;;
+        --no-aur-check) AUR_CHECK=0 ;;
+        -h|--help)      usage; exit 0 ;;
+        --version)      echo "pkg-sources $VERSION"; exit 0 ;;
+        *)              die "unknown option: $1 (try --help)" ;;
+    esac
+    shift
+done
+
+have pacman || die "pacman not found — this script is for Arch Linux."
+
+# ----------------------------------------------------------------------
+# Data collection
+# ----------------------------------------------------------------------
+
+declare -A SRC_OF      # package name -> source string
+declare -A VER_OF      # package name -> version
+
+# -- pacman: repo map from sync databases (one fast call) ---------------
+declare -A REPO_OF
+while read -r repo pkg _; do
+    [[ -n "${REPO_OF[$pkg]:-}" ]] || REPO_OF[$pkg]="$repo"
+done < <(pacman -Sl 2>/dev/null)
+
+# -- pacman: native (official repo) packages ----------------------------
+while read -r pkg ver; do
+    VER_OF[$pkg]="$ver"
+    SRC_OF[$pkg]="pacman [${REPO_OF[$pkg]:-unknown repo}]"
+done < <(pacman -Qn 2>/dev/null)
+
+# -- foreign packages: split into AUR vs local --------------------------
+# Names AND versions come from a single `pacman -Qm` pass. (The old loop
+# ran `pacman -Qm "$pkg"` once per foreign package — ~0.4s of pacman
+# startup each — which was 80% of the runtime.)
+FOREIGN=()
+while read -r pkg ver; do
+    FOREIGN+=( "$pkg" )
+    VER_OF[$pkg]="$ver"
+done < <(pacman -Qm 2>/dev/null)
+
+declare -A IS_AUR
+if (( ${#FOREIGN[@]} )); then
+    if (( AUR_CHECK )) && have curl && have jq; then
+        # Batch query the AUR RPC API (max 500 names per request)
+        for (( i = 0; i < ${#FOREIGN[@]}; i += 500 )); do
+            chunk=( "${FOREIGN[@]:i:500}" )
+            args=()
+            for p in "${chunk[@]}"; do
+                args+=( --data-urlencode "arg[]=$p" )
+            done
+            while read -r p; do
+                [[ -n "${p:-}" ]] && IS_AUR[$p]=1
+            done < <(
+                curl -fsS --max-time 15 \
+                    "${args[@]}" \
+                    "https://aur.archlinux.org/rpc/v5/info" 2>/dev/null |
+                    jq -r '.results[] | .Name' 2>/dev/null
+            )
+        done
+        for pkg in "${FOREIGN[@]}"; do
+            if [[ -n "${IS_AUR[$pkg]:-}" ]]; then
+                SRC_OF[$pkg]="AUR"
+            else
+                SRC_OF[$pkg]="local"
+            fi
+        done
+    else
+        for pkg in "${FOREIGN[@]}"; do
+            SRC_OF[$pkg]="foreign (unverified)"
+        done
+    fi
+fi
+
+# -- flatpak -------------------------------------------------------------
+if have flatpak; then
+    while IFS=$'\t' read -r appid ver name origin; do
+        [[ -n "${appid:-}" ]] || continue
+        name="${name:-$appid}"
+        VER_OF[$name]="${ver:-}"
+        SRC_OF[$name]="flatpak [${origin:-unknown}]"
+    done < <(flatpak list --app --columns=application,version,name,origin 2>/dev/null)
+fi
+
+# -- snap ----------------------------------------------------------------
+if have snap; then
+    while read -r name ver _rev _; do
+        [[ "$name" == "Name" || -z "${name:-}" ]] && continue
+        VER_OF[$name]="${ver:-}"
+        SRC_OF[$name]="snap"
+    done < <(snap list 2>/dev/null)
+fi
+
+# -- gui mode: .desktop launchers ----------------------------------------
+# Reuses the data above where possible. Ownership is resolved with ONE
+# bulk `pacman -Qo f1 f2 ...` call — the old per-file loop paid ~0.13s
+# of pacman startup for every .desktop file (that was the 25s).
+declare -A GUI_APPS
+declare -A GUI_VER
+if [[ "$MODE" == "gui" ]]; then
+    mapfile -t DESKTOPS < <(
+        find /usr/share/applications \
+             "$HOME/.local/share/applications" \
+             /var/lib/flatpak/exports/share/applications \
+             "$HOME/.local/share/flatpak/exports/share/applications" \
+             -type f -name '*.desktop' 2>/dev/null
+    )
+    if (( ${#DESKTOPS[@]} )); then
+        # One pass: file -> display name (first Name= per file)
+        declare -A NAME_OF
+        while IFS=$'\t' read -r file name; do
+            NAME_OF[$file]="$name"
+        done < <(
+            awk '/^Name=/{sub(/^Name=/,""); print FILENAME "\t" $0; nextfile}' \
+                "${DESKTOPS[@]}" 2>/dev/null
+        )
+
+        # One bulk call: file -> owning pacman package
+        declare -A OWNER_OF
+        while IFS= read -r line; do
+            file="${line%% is owned by *}"
+            owner="${line#* is owned by }"
+            owner="${owner%% *}"
+            [[ -n "$file" && -n "$owner" ]] || continue
+            OWNER_OF[$file]="$owner"
+        done < <(pacman -Qo "${DESKTOPS[@]}" 2>/dev/null)
+
+        for file in "${DESKTOPS[@]}"; do
+            name="${NAME_OF[$file]:-}"
+            [[ -n "$name" ]] || continue
+            owner="${OWNER_OF[$file]:-}"
+
+            # Known by display name (flatpak / snap / ...)?
+            if [[ -n "${SRC_OF[$name]:-}" ]]; then
+                GUI_APPS[$name]="${SRC_OF[$name]}"
+                GUI_VER[$name]="${VER_OF[$name]:-}"
+            # Owned by a pacman package we already classified?
+            elif [[ -n "$owner" && -n "${SRC_OF[$owner]:-}" ]]; then
+                GUI_APPS[$name]="${SRC_OF[$owner]}"
+                GUI_VER[$name]="${VER_OF[$owner]:-}"
+            else
+                GUI_APPS[$name]="local"
+            fi
+        done
+    fi
+fi
+
+# ----------------------------------------------------------------------
+# Output
+# ----------------------------------------------------------------------
+
+# Build the entry list based on mode
+declare -A OUT_SRC; declare -A OUT_VER
+if [[ "$MODE" == "gui" ]]; then
+    for name in "${!GUI_APPS[@]}"; do
+        OUT_SRC[$name]="${GUI_APPS[$name]}"
+        OUT_VER[$name]="${GUI_VER[$name]:-}"
+    done
+else
+    for name in "${!SRC_OF[@]}"; do
+        OUT_SRC[$name]="${SRC_OF[$name]}"
+        OUT_VER[$name]="${VER_OF[$name]:-}"
+    done
+fi
+
+# Apply --source filter
+if [[ -n "$FILTER" ]]; then
+    for name in "${!OUT_SRC[@]}"; do
+        case "${OUT_SRC[$name],,}" in
+            *"${FILTER,,}"*) ;;
+            *) unset 'OUT_SRC[$name]' 'OUT_VER[$name]' ;;
+        esac
+    done
+fi
+
+# Apply --aur shortcut
+if [[ "$MODE" == "aur" ]]; then
+    for name in "${!OUT_SRC[@]}"; do
+        [[ "${OUT_SRC[$name]}" == "AUR" ]] || unset 'OUT_SRC[$name]' 'OUT_VER[$name]'
+    done
+fi
+
+(( ${#OUT_SRC[@]} )) || { echo "No packages matched."; exit 0; }
+
+# --count
+if (( COUNT_ONLY )); then
+    declare -A COUNTS
+    for name in "${!OUT_SRC[@]}"; do
+        COUNTS[${OUT_SRC[$name]}]="$(( ${COUNTS[${OUT_SRC[$name]}]:-0} + 1 ))"
+    done
+    printf '%-24s %s\n' "SOURCE" "COUNT"
+    printf '%-24s %s\n' "------------------------" "-----"
+    for src in "${!COUNTS[@]}"; do
+        printf '%-24s %s\n' "$src" "${COUNTS[$src]}"
+    done | sort -f
+    total="${#OUT_SRC[@]}"
+    echo
+    printf '%-24s %s\n' "TOTAL" "$total"
+    exit 0
+fi
+
+# --json
+if (( JSON )); then
+    for name in "${!OUT_SRC[@]}"; do
+        printf '%s\t%s\t%s\n' "$name" "${OUT_VER[$name]}" "${OUT_SRC[$name]}"
+    done | sort -f | jq -nR '[inputs | split("\t") |
+        {name: .[0], version: .[1], source: .[2]}]'
+    exit 0
+fi
+
+# -- grouped table (default)
+while IFS= read -r src; do
+    count=0
+    entries=()
+    for name in "${!OUT_SRC[@]}"; do
+        if [[ "${OUT_SRC[$name]}" == "$src" ]]; then
+            count=$(( count + 1 ))
+            entries+=( "$name" )
+        fi
+    done
+    printf '\n== %s (%d) ==\n' "$src" "$count"
+    while IFS= read -r name; do
+        printf '  %-40s %s\n' "$name" "${OUT_VER[$name]}"
+    done < <(printf '%s\n' "${entries[@]}" | sort -f)
+done < <(printf '%s\n' "${OUT_SRC[@]}" | sort -fu)
+echo
+printf '%d packages total.\n' "${#OUT_SRC[@]}"

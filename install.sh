@@ -11,11 +11,9 @@ if ! command -v stow >/dev/null 2>&1; then
     exit 1
 fi
 
-# NOTE: kitty is intentionally NOT here — its config lives in my main dotfiles repo
-# (terminal config shared with the laptop). This repo only needs kitty installed.
-# NOTE: no local-bin here either — ~/.local/bin is owned by the main dotfiles repo
-# (scripts: power-menu.sh, bluetooth-rofi.sh, …).
-PACKAGES="i3 i3status rofi dunst picom xprofile"
+# Everything used on either machine now lives in this repo — there is no separate
+# "main dotfiles" repo any more (it was merged in here).
+PACKAGES="i3 i3status rofi dunst picom xprofile fastfetch fish flameshot gtk kitty local-bin redshift sddm starship"
 
 for pkg in $PACKAGES; do
     [ -d "$pkg" ] || { echo "missing package dir: $pkg" >&2; exit 1; }

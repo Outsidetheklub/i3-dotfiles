@@ -1,0 +1,51 @@
+#!/bin/sh
+# zen-focus-or-launch — helper for the Mod+B / browser keybind.
+#
+# Why: niri sometimes fires the browser bind twice — observed 87 ms apart, and also
+# seconds later while the first launch is still cold-starting (a Zen cold start here
+# takes ~5s). The second fire lands before any window exists, so you get two windows.
+#
+# Behaviour:
+#   * a Zen window is already open      -> focus it, open nothing
+#   * Zen is starting (process is alive) -> do nothing, the window is on its way
+#   * otherwise                          -> launch Zen
+# A 2-second stamp also swallows a back-to-back double fire.
+
+ZEN=/usr/bin/zen-browser
+STAMP="${XDG_RUNTIME_DIR:-/tmp}/zen-bind.stamp"
+
+zen_win_id() {
+    niri msg --json windows 2>/dev/null | python3 -c '
+import json, sys
+try:
+    wins = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+for w in wins:
+    if "zen" in str(w.get("app_id", "")).lower():
+        print(w["id"])
+        break
+' 2>/dev/null
+}
+
+focus_existing() {
+    id=$(zen_win_id)
+    [ -n "$id" ] || return 1
+    exec niri msg action focus-window --id "$id"
+}
+
+# 1. back-to-back double fire: swallow it (and focus if we can)
+if [ -e "$STAMP" ] && [ $(( $(date +%s) - $(stat -c %Y "$STAMP") )) -lt 2 ]; then
+    focus_existing || true
+    exit 0
+fi
+touch "$STAMP"
+
+# 2. window already open -> just focus
+focus_existing && exit 0
+
+# 3. still starting -> don't stack a second launch on top
+pgrep -x zen-bin >/dev/null && exit 0
+
+# 4. nothing running -> launch
+exec "$ZEN"

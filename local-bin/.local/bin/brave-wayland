@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Brave Origin launcher: native Wayland under niri, plain X11 under i3.
+if [ -n "${WAYLAND_DISPLAY:-}" ]; then
+    exec /usr/bin/brave-origin --ozone-platform=wayland --enable-features=UseOzonePlatform "$@"
+else
+    exec /usr/bin/brave-origin "$@"
+fi

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Spotify via spotify-launcher install, native Wayland.
+# cef-noframe LD_PRELOAD shim kills the CEF white/blue title bar (frameless).
+# If the install dir ever changes (spotify-launcher update), fix the path below.
+export LD_PRELOAD="${LD_PRELOAD:+$LD_PRELOAD:}$HOME/.local/lib/cef-noframe.so"
+exec ~/.local/share/spotify-launcher/install/usr/share/spotify/spotify \
+    --enable-features=UseOzonePlatform --ozone-platform=wayland \
+    --disable-gpu-sandbox "$@"

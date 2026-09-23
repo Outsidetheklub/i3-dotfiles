@@ -20,7 +20,7 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `rofi/.config/rofi/config.rasi` | `~/.config/rofi/` | launcher — black, centered, no icons. Also used by the power menu |
 | `dunst/.config/dunst/dunstrc` | `~/.config/dunst/` | notifications — flat black |
 | `picom/.config/picom/picom.conf` | `~/.config/picom/` | compositing + vsync only, no shadows/fading/transparency |
-| `~/.local/bin/*` scripts | main **dotfiles** repo | rofi power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`) |
+| `local-bin/.local/bin/*` | `~/.local/bin/` | scripts: power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`), projector, mouse-to-focused, … |
 | `xprofile/.xprofile` | `~/.xprofile` | repaints the root window black (kills the ghost SDDM screen) |
 | `system-files/99-mouse-noaccel.conf` | `/etc/X11/xorg.conf.d/` | the actual fix for mouse acceleration (needs root) |
 | `examples/local.conf` | `~/.config/i3/local.conf` | template for machine-specific i3 config |
@@ -28,14 +28,13 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 
 `examples/` is not stowed — it's reference material.
 
-The `~/.local/bin` scripts (`power-menu.sh`, `bluetooth-rofi.sh`, `projector.sh`, …)
-live in the main **dotfiles** repo under `local-bin/` — that repo owns `~/.local/bin`.
-This repo used to ship its own `local-bin`, which double-managed the same directory
-(and lost on the laptop, since `~/.local/bin` ends up as a symlink into dotfiles).
+Everything now lives in **this** repo — it absorbed the older `dotfiles` repo
+(GTK theme, fish, starship, fastfetch, flameshot, redshift, sddm, kitty, and the
+`local-bin` scripts). The old split was a headache: `~/.local/bin` pointed into one
+repo while the i3 config lived in another.
 
-**Not included on purpose:** `kitty.conf` lives in my main `dotfiles` repo (terminal
-config, shared with the laptop), and the wallpaper images aren't tracked at all.
-This repo needs `kitty` *installed*, just not configured from here.
+**Also in here:** `gtk/`, `fish/`, `starship/`, `fastfetch/`, `flameshot/`,
+`redshift/`, `sddm/`, `kitty/`.
 
 ## Install
 
@@ -50,7 +49,7 @@ It refuses to clobber real files — if you already have e.g. `~/.config/i3/conf
 as a real file (or symlinked by another dotfiles repo), move it away first:
 
 ```sh
-cd ~/dotfiles && stow -D i3 kitty picom     # if an older repo already stows these
+stow -D <pkg>      # if some other repo already stows a package (e.g. an old dotfiles clone)
 ```
 
 Then the two manual steps:
@@ -93,7 +92,7 @@ git clone git@github.com:Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
 cd ~/i3-dotfiles
 sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')   # + AUR: zen-browser-bin, spotify-launcher
 
-# un-stow any older i3/kitty/picom from the other dotfiles repo, then:
+# then deploy everything:
 ./install.sh
 sudo cp system-files/99-mouse-noaccel.conf /etc/X11/xorg.conf.d/
 cp examples/local.conf ~/.config/i3/local.conf && cp examples/display.sh ~/.config/i3/display.sh
@@ -107,8 +106,7 @@ Laptop extras worth adding:
   `order += "battery all"` and `battery all { format = "%status %percentage %remaining" }`
   to `~/.config/i3status/config`.
 - **Projector** (`$mod+Shift+p` / `$mod+Shift+x`): the two binds are commented at the
-  bottom of `i3/.config/i3/config`; the script lives in the main **dotfiles** repo
-  (`local-bin/.local/bin/projector.sh`).
+  bottom of `i3/.config/i3/config`; the script is `local-bin/.local/bin/projector.sh`.
 
 ## Keybinds
 

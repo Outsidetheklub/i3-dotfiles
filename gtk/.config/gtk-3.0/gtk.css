@@ -1,0 +1,37 @@
+@define-color accent_color #b3c8e7;
+@define-color accent_fg_color #1c324a;
+@define-color accent_bg_color #b3c8e7;
+@define-color window_bg_color #121315;
+@define-color window_fg_color #e3e2e4;
+@define-color headerbar_bg_color #121315;
+@define-color headerbar_fg_color #e3e2e4;
+@define-color popover_bg_color #121315;
+@define-color popover_fg_color #e3e2e4;
+@define-color view_bg_color #121315;
+@define-color view_fg_color #e3e2e4;
+@define-color card_bg_color #121315;
+@define-color card_fg_color #e3e2e4;
+@define-color sidebar_bg_color @window_bg_color;
+@define-color sidebar_fg_color @window_fg_color;
+@define-color sidebar_border_color @window_bg_color;
+@define-color sidebar_backdrop_color @window_bg_color;
+@define-color theme_selected_bg_color alpha(@accent_color, 0.15);
+@define-color theme_selected_fg_color @primary;
+
+/* GTK3-native Adwaita variable names.
+   The libadwaita names above (window_bg_color, view_bg_color, card_bg_color, ...)
+   are only understood by GTK4/libadwaita or by the adw-gtk3 theme port.
+   Plain GTK3 Adwaita ignores them, so the Caelestia palette must also be
+   declared under the classic theme_* names or GTK3 apps fall back to
+   default colours (which is what produced black text on dark backgrounds). */
+@define-color theme_bg_color #121315;
+@define-color theme_fg_color #e3e2e4;
+@define-color theme_base_color #121315;
+@define-color theme_text_color #e3e2e4;
+@define-color insensitive_bg_color #1b1c1d;
+@define-color insensitive_fg_color alpha(#e3e2e4, 0.5);
+@define-color borders #2a2b2e;
+
+@import "thunar.css";
+
+@import url("noctalia.css");
