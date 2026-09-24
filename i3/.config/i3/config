@@ -83,6 +83,11 @@ bindsym $mod+p exec pavucontrol
 # Script: ~/.local/bin/bluetooth-rofi.sh (local-bin/ in this repo).
 bindsym $mod+Shift+b exec --no-startup-id ~/.local/bin/bluetooth-rofi.sh
 
+# Network menu — rofi front-end for NetworkManager (nmcli): pick/connect Wi-Fi,
+# rescan, radio on/off, hidden network, IP details.
+# Script: ~/.local/bin/network-rofi.sh (local-bin/ in this repo).
+bindsym $mod+Shift+n exec --no-startup-id ~/.local/bin/network-rofi.sh
+
 # ── Window navigation ───────────────────────────────────
 bindsym $mod+h focus left
 bindsym $mod+j focus down
