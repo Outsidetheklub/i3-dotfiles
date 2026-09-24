@@ -1,4 +1,14 @@
-/* Thunar theme */
+/* =============================================================================
+   Thunar theme — boring black & white
+   Pure black background (#000000), pure white text (#ffffff), no colour accents.
+
+   Rewritten 2026-09-24. NOTE: the named GTK3 theme (adw-gtk3-dark) is NOT
+   installed on this machine, so GTK3 falls back to *light* Adwaita, whose CSS
+   hardcodes literal light colours (toolbar #f6f5f4, buttons, view #ffffff...).
+   @define-color overrides in gtk.css are therefore ignored by GTK3. That is why
+   this file explicitly sets every surface instead of relying on theme colours.
+   Scoped to .thunar (menu/menuitem rules are global — see note at the bottom).
+   ============================================================================= */
 
 /* =============================================================================
    Global Resets
@@ -10,19 +20,101 @@
 }
 
 /* =============================================================================
+   Base colours: black background, white text
+   ============================================================================= */
+
+.thunar,
+.thunar .view,
+.thunar .view *,
+.thunar label,
+.thunar cell,
+.thunar button {
+    color: #ffffff;
+}
+
+.thunar entry {
+    background-color: #000000;
+    color: #ffffff;
+}
+
+/* =============================================================================
    Window & Background
    ============================================================================= */
 
-.thunar.background {
-    background: #121315;
+.thunar.background,
+.thunar .background {
+    background-color: #000000;
+    color: #ffffff;
 }
 
 .thunar .titlebar {
-    background: inherit;
+    background-color: #000000;
+    color: #ffffff;
 }
 
 .thunar .titlebutton.close {
     margin: 0 15px 0 0;
+}
+
+/* =============================================================================
+   Window chrome: headerbar, menubar, toolbar, action bar
+   (these stayed light because they come from the Adwaita fallback theme)
+   ============================================================================= */
+
+.thunar headerbar,
+.thunar .titlebar,
+.thunar menubar,
+.thunar .menubar,
+.thunar toolbar,
+.thunar .toolbar,
+.thunar actionbar,
+.thunar .actionbar {
+    background-color: #000000;
+    background-image: none;
+    color: #ffffff;
+    text-shadow: none;
+    box-shadow: none;
+}
+
+/* Same for the unfocused (backdrop) state — otherwise un-focusing turns them white */
+.thunar headerbar:backdrop,
+.thunar .titlebar:backdrop,
+.thunar menubar:backdrop,
+.thunar .menubar:backdrop,
+.thunar toolbar:backdrop,
+.thunar .toolbar:backdrop,
+.thunar actionbar:backdrop,
+.thunar .actionbar:backdrop {
+    background-color: #000000;
+    background-image: none;
+    color: #ffffff;
+}
+
+/* Buttons: white text/icons, never a light fill */
+.thunar button,
+.thunar button:backdrop,
+.thunar .button,
+.thunar togglebutton,
+.thunar .toggle {
+    color: #ffffff;
+    background-image: none;
+    text-shadow: none;
+}
+
+/* =============================================================================
+   Generic surfaces (tree/list/scrolled containers)
+   ============================================================================= */
+
+.thunar scrolledwindow,
+.thunar treeview,
+.thunar listbox,
+.thunar listbox > row,
+.thunar list,
+.thunar list > row,
+.thunar row,
+.thunar .view {
+    background-color: #000000;
+    color: #ffffff;
 }
 
 /* =============================================================================
@@ -45,7 +137,7 @@
     padding: 10px;
     margin: 10px 15px 0 0;
     border-radius: 15px;
-    background-color: #1b1c1d;
+    background-color: #000000;
     animation: fading 400ms ease forwards;
     opacity: 0;
     animation-delay: 250ms;
@@ -56,13 +148,16 @@
     background-color: transparent;
 }
 
+/* Selection — white text on a subtle white wash (must follow the rules above) */
+.thunar .frame.standard-view .view:selected,
 .thunar .frame.standard-view .view *:selected {
-    color: #b3c8e7;
+    color: #ffffff;
+    background-color: alpha(#ffffff, 0.20);
 }
 
 .thunar .rubberband {
-    background-color: alpha(#b3c8e7, 0.15);
-    border: 1px solid alpha(#b3c8e7, 0.15);
+    background-color: alpha(#ffffff, 0.15);
+    border: 1px solid alpha(#ffffff, 0.35);
 }
 
 
@@ -82,13 +177,12 @@
 }
 
 .thunar header.top tabs .reorderable-page:hover {
-    background-color: alpha(#b3c8e7, 0.08);
-
+    background-color: alpha(#ffffff, 0.08);
 }
-.thunar header.top tabs .reorderable-page:checked {
-    color: #b3c8e7;
-    background-color: alpha(#b3c8e7, 0.15);
 
+.thunar header.top tabs .reorderable-page:checked {
+    color: #ffffff;
+    background-color: alpha(#ffffff, 0.20);
 }
 
 /* =============================================================================
@@ -111,12 +205,12 @@
 }
 
 .thunar .sidebar .view:hover {
-    background: alpha(#e3e2e4, 0.1);
+    background: alpha(#ffffff, 0.10);
 }
 
 .thunar .sidebar .view:selected {
-    background: alpha(#b3c8e7, 0.15);
-    color: #b3c8e7;
+    background: alpha(#ffffff, 0.20);
+    color: #ffffff;
 }
 
 /* =============================================================================
@@ -132,18 +226,18 @@
 .thunar .location-button.toggle:checked,
 .thunar .path-bar-button.toggle:checked {
     padding: 8px 25px;
-    background: alpha(#b3c8e7, 0.15);
-    color: #b3c8e7;
+    background: alpha(#ffffff, 0.20);
+    color: #ffffff;
     box-shadow: none;
 }
 
 .thunar .location-button.path-bar-button:not(:checked) {
-    background-color: #1b1c1d;
+    background-color: #000000;
 }
 
 .thunar .location-button.path-bar-button:not(:checked):hover {
-    background: alpha(#b3c8e7, 0.08);
-    color: alpha(#b3c8e7, 0.8);
+    background: alpha(#ffffff, 0.10);
+    color: #ffffff;
 }
 
 .thunar .location-button.toggle+.location-button.toggle:checked {
@@ -160,7 +254,7 @@
    ============================================================================= */
 
 .thunar button.toggle:checked {
-    color: #b3c8e7;
+    color: #ffffff;
 }
 
 .thunar .image-button {
@@ -174,11 +268,11 @@
    ============================================================================= */
 
 .thunar statusbar {
-    background-color: #1b1c1d;
+    background-color: #000000;
     border-radius: 15px;
     padding: 10px 10px;
     margin: 15px 5px 15px -10px;
-    color: #e3e2e4;
+    color: #ffffff;
 }
 
 
@@ -188,6 +282,40 @@
 
 .thunar box.vertical .image {
     margin: 15px;
+}
+
+
+/* =============================================================================
+   Context menus / popovers
+   NOTE: GTK3 context menus are separate toplevels, so they cannot be scoped to
+   .thunar. These rules therefore affect *all* GTK3 menus app-wide; remove this
+   block if you only want Thunar's main window in black & white.
+   ============================================================================= */
+
+menu,
+.menu,
+menuitem,
+.menuitem {
+    background-color: #000000;
+    background-image: none;
+    color: #ffffff;
+    text-shadow: none;
+}
+
+menu:backdrop,
+menuitem:backdrop {
+    background-color: #000000;
+    color: #ffffff;
+}
+
+menu menuitem:hover,
+.menu .menuitem:hover {
+    background-color: alpha(#ffffff, 0.15);
+    color: #ffffff;
+}
+
+menu separator {
+    background-color: alpha(#ffffff, 0.15);
 }
 
 
