@@ -10,7 +10,7 @@
 #   • ethernet module dropped (wifi only → it only ever said "E: down")
 
 general {
-        colors = true
+        colors = false
         interval = 5
 }
 
