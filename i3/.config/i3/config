@@ -52,8 +52,8 @@ new_float none
 exec_always --no-startup-id xsetroot -solid "#000000"
 # Compositing — shadows off, xrender backend, vsync (~/.config/picom/picom.conf)
 exec_always --no-startup-id pgrep -x picom >/dev/null || picom -b
-# Night light (Stockholm)
-exec_always --no-startup-id pgrep -x redshift >/dev/null || redshift -l 59.33:18.07 &
+# Night light now runs from startup.sh, using $REDSHIFT_LOCATION out of
+# ~/.config/i3/machine.env — nothing machine-specific is baked into this config.
 # Notifications: no daemon. The wifi + bluetooth rofi scripts draw their own
 # feedback inside rofi (dunst was dropped 2026-09-26).
 # Wallpaper, polkit agent, gamepad idle guard

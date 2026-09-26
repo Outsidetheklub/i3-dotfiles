@@ -20,8 +20,10 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `rofi/.config/rofi/config.rasi` | `~/.config/rofi/` | launcher — black, centered, no icons. Also used by the power menu |
 | `picom/.config/picom/picom.conf` | `~/.config/picom/` | compositing + vsync only, no shadows/fading/transparency |
 | `local-bin/.local/bin/*` | `~/.local/bin/` | scripts: power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`), wifi menu (`$mod+Shift+n`), screenshots (`Print`, `$mod+Shift+s`), projector, mouse-to-focused, … |
+| `gtk/.config/mimeapps.list` | `~/.config/` | file associations: **sxiv** for images, **mpv** for video, zen for links/HTML. Apps may append to this — that shows up as a real diff, which is the point |
 | `xprofile/.xprofile` | `~/.xprofile` | repaints the root window black (ghost login screen) + flatpak env |
 | `system-files/99-mouse-noaccel.conf` | `/etc/X11/xorg.conf.d/` | the actual fix for mouse acceleration (needs root) |
+| `system-files/NetworkManager/conf.d/wifi_backend.conf` | `/etc/NetworkManager/conf.d/` | wifi through iwd instead of wpa_supplicant (needs root) |
 | `system-files/lightdm/50-i3.conf` | `/etc/lightdm/lightdm.conf.d/` | LightDM seat: i3 session + GTK greeter (needs root) |
 | `examples/local.conf` | `~/.config/i3/local.conf` | template for machine-specific i3 config |
 | `examples/display.sh` | `~/.config/i3/display.sh` | template for machine-specific xrandr setup |
@@ -36,6 +38,26 @@ repo while the i3 config lived in another.
 
 **Also in here:** `gtk/`, `fish/`, `starship/`, `fastfetch/`,
 `redshift/`, `kitty/`.
+
+## Prerequisites
+
+Base Arch install with an X session. This repo assumes a few things are already
+there (they're machine-specific, so they're deliberately **not** tracked):
+
+| What | Command / note |
+|---|---|
+| Xorg | `sudo pacman -S xorg-server xorg-xinit` (lightdm pulls in the server anyway) |
+| GPU driver | **NVIDIA:** `nvidia-open-dkms nvidia-utils lib32-nvidia-utils` — the *open* kernel modules (Turing and newer; required for Blackwell/RTX 50). `nvidia-container-toolkit` too if you use davincibox. **AMD/Intel:** `mesa` + the usual. `/etc/X11/xorg.conf.d/10-nvidia.conf` is per-machine and not tracked |
+| Audio | `pipewire pipewire-pulse pipewire-alsa wireplumber` — in `packages.txt`; `pipewire-alsa` is what gives ALSA-only apps (DaVinci Resolve) sound |
+| Keyboard layout | machine-specific: `localectl set-x11-keymap <layout> [model]` — writes `/etc/X11/xorg.conf.d/00-keyboard.conf`, so this repo never needs a `setxkbmap` line |
+| AUR helper | `base-devel git` + an AUR helper for `zen-browser-bin` and `spotify-launcher` (the two AUR packages this setup wants) |
+| Fonts | `noto-fonts` (in `packages.txt`) — the bar and terminal are plain `monospace` |
+
+Everything the repo itself needs is in `packages.txt`:
+
+```sh
+sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')
+```
 
 ## Install
 
@@ -59,15 +81,20 @@ Then the manual steps:
 # 1. mouse acceleration (root, not stowed)
 sudo cp system-files/99-mouse-noaccel.conf /etc/X11/xorg.conf.d/
 
-# 2. display manager (root, not stowed)
+# 2. wifi backend (root, not stowed)
+sudo cp system-files/NetworkManager/conf.d/wifi_backend.conf /etc/NetworkManager/conf.d/
+sudo systemctl disable --now wpa_supplicant.service     # iwd takes over
+
+# 3. display manager (root, not stowed)
 sudo pacman -S --needed lightdm lightdm-gtk-greeter
 sudo install -Dm644 system-files/lightdm/50-i3.conf /etc/lightdm/lightdm.conf.d/50-i3.conf
 sudo systemctl disable sddm.service && sudo systemctl enable lightdm.service
 
 # 3. machine-specific config
-cp examples/local.conf  ~/.config/i3/local.conf     # then edit output names
-cp examples/display.sh  ~/.config/i3/display.sh     # then edit, chmod +x
-$EDITOR ~/.config/i3/local.conf ~/.config/i3/display.sh
+cp examples/local.conf  ~/.config/i3/local.conf      # then edit output names
+cp examples/display.sh  ~/.config/i3/display.sh      # then edit, chmod +x
+cp examples/machine.env ~/.config/i3/machine.env     # location, interfaces, screenshot dir
+$EDITOR ~/.config/i3/local.conf ~/.config/i3/display.sh ~/.config/i3/machine.env
 ```
 
 Packages: `packages.txt` (`sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')`).
@@ -89,6 +116,20 @@ black no matter what the i3 config says.
 
 Find the names first: `xrandr --query | grep ' connected'`.
 
+### Everything else machine-specific: `machine.env`
+
+Scripts read these from `~/.config/i3/machine.env` (optional, **not tracked**, template
+in `examples/machine.env`). No value is baked into the repo, and an unset value means
+the script either auto-detects or stays quiet — so a stranger's clone behaves sensibly:
+
+| Variable | Used by | Unset behaviour |
+|---|---|---|
+| `REDSHIFT_LOCATION` | night light | redshift isn't started at all (no wrong-location tint) |
+| `INTERNAL_OUTPUT` | `projector.sh` | defaults to `eDP-1` |
+| `WLAN_IFACE` | `network-rofi.sh` | defaults to `wlan0` |
+| `SCREENSHOT_DIR` | `screenshot.sh` | XDG Pictures dir + `/Screenshots` |
+| `NOTIFY_TIMEOUT` | rofi feedback (`network-rofi.sh`, `bluetooth-rofi.sh`, `screenshot.sh`) | 4s (screenshots: 2s) |
+
 ## Recreating this on another machine (e.g. the laptop)
 
 ```sh
@@ -101,12 +142,15 @@ sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')   # + AUR: ze
 # then deploy everything:
 ./install.sh
 sudo cp system-files/99-mouse-noaccel.conf /etc/X11/xorg.conf.d/
+sudo cp system-files/NetworkManager/conf.d/wifi_backend.conf /etc/NetworkManager/conf.d/
+sudo systemctl disable --now wpa_supplicant.service          # iwd backend
 sudo pacman -S --needed lightdm lightdm-gtk-greeter
 sudo install -Dm644 system-files/lightdm/50-i3.conf /etc/lightdm/lightdm.conf.d/50-i3.conf
 sudo systemctl enable lightdm.service
 cp examples/local.conf ~/.config/i3/local.conf && cp examples/display.sh ~/.config/i3/display.sh
+cp examples/machine.env ~/.config/i3/machine.env
 chmod +x ~/.config/i3/display.sh
-# edit both for this machine's outputs, then log out and pick i3 in LightDM
+# edit all three for this machine's outputs, then log out and pick i3 in LightDM
 # greeter on the wrong monitor? install examples/lightdm-display-setup.sh (see its header)
 # check first: i3 -C -c ~/.config/i3/config
 ```

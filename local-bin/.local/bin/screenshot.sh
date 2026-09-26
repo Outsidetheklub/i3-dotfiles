@@ -21,7 +21,17 @@
 set -u
 
 MODE=full
-DIR=${SCREENSHOT_DIR:-$HOME/Pictures/Screenshots}
+# Output directory: $SCREENSHOT_DIR if set, else the XDG Pictures dir + /Screenshots
+# (falls back to ~/Pictures, and to $HOME if even that is unavailable).
+DIR=${SCREENSHOT_DIR:-}
+if [ -z "$DIR" ]; then
+    pics=$HOME/Pictures
+    if command -v xdg-user-dir >/dev/null 2>&1; then
+        pics=$(xdg-user-dir PICTURES 2>/dev/null) || pics=$HOME/Pictures
+        [ -n "$pics" ] || pics=$HOME/Pictures
+    fi
+    DIR="$pics/Screenshots"
+fi
 CLIP=1
 WRITE=1
 TOAST=1

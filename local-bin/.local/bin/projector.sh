@@ -7,11 +7,13 @@
 #   projector.sh off      -> disable external, back to laptop only
 #   projector.sh status   -> show what's connected
 #
-# Detects the connected output automatically (HDMI preferred, then DP).
+# Detects the connected external output automatically (HDMI preferred, then DP).
 # No external connected -> helpful error instead of silent failure.
+# The internal panel is machine-specific: set INTERNAL_OUTPUT in
+# ~/.config/i3/machine.env (defaults to the laptop panel name below).
 
 MODE="${1:-toggle}"
-INTERNAL="eDP-1"
+INTERNAL=${INTERNAL_OUTPUT:-eDP-1}
 
 # find first connected external output (HDMI preferred, then DP)
 find_ext() {

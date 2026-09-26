@@ -24,6 +24,27 @@ xdotool
 stow
 adw-gtk-theme
 
+# Shell + font (the bar and terminal are plain monospace)
+fish
+noto-fonts
+
+# Audio — PipeWire stack. wireplumber is the session manager; pipewire-alsa is
+# what lets ALSA-only apps (DaVinci Resolve) have sound at all.
+pipewire
+pipewire-pulse
+pipewire-alsa
+
+# Networking + Bluetooth (the rofi menus talk to nmcli / bluetoothctl)
+# iwd is the NetworkManager backend this box uses: see system-files/NetworkManager/
+networkmanager
+iwd
+bluez-utils
+
+# Default handlers for files opened from a file manager — keep in sync with
+# gtk/.config/mimeapps.list
+sxiv
+mpv
+
 # Display manager (LightDM + GTK greeter; config in system-files/lightdm/)
 lightdm
 lightdm-gtk-greeter
@@ -33,4 +54,4 @@ lightdm-gtk-greeter
 #   spotify-launcher (AUR) - $mod+m
 #
 # Deliberately NOT needed: any Nerd Font, feh (no wallpaper by default),
-# cliphist/xclip (no clipboard history in this setup).
+# cliphist (no clipboard history in this setup).
