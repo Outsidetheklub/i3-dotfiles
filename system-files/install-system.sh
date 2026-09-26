@@ -79,6 +79,6 @@ Still to do (see README):
                       then edit for this box's outputs (xrandr --query | grep connected)
   3) keyboard layout: sudo localectl set-x11-keymap se pc105
   4) greeter on the wrong monitor?  see examples/lightdm-display-setup.sh
-  5) AUR apps (optional): zen-browser-bin, spotify-launcher
+  5) AUR browser (optional): paru/yay -> zen-browser-bin   (spotify-launcher is in the official repos)
   6) reboot and pick i3 in LightDM
 EOF

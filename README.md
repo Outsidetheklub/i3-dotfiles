@@ -55,7 +55,7 @@ ones a package list can't give you, because they're machine-specific:
 | GPU driver | **NVIDIA:** `nvidia-open-dkms nvidia-utils lib32-nvidia-utils` — the *open* kernel modules (Turing and newer; required for Blackwell/RTX 50). `nvidia-container-toolkit` too if you use davincibox. **AMD/Intel:** `mesa` + the usual. `/etc/X11/xorg.conf.d/10-nvidia.conf` is per-machine and not tracked |
 | Audio | `pipewire pipewire-pulse pipewire-alsa wireplumber` — in `packages.txt`; `pipewire-alsa` is what gives ALSA-only apps (DaVinci Resolve) sound |
 | Keyboard layout | machine-specific: `localectl set-x11-keymap <layout> [model]` — writes `/etc/X11/xorg.conf.d/00-keyboard.conf`, so this repo never needs a `setxkbmap` line |
-| AUR helper | `base-devel git` + an AUR helper for `zen-browser-bin` and `spotify-launcher` (the two AUR packages this setup wants) |
+| AUR helper | only for the browser: `base-devel git` + an AUR helper (paru/yay) for `zen-browser-bin` — 3-line recipe below. Everything else in `packages.txt` is in the official repos, `spotify-launcher` included |
 | Fonts | `noto-fonts` for the bar/terminal (`monospace`) and `ttf-firacode-nerd` for GTK apps — both in `packages.txt` |
 | In a VM | no NVIDIA driver; use `mesa` + the VM's video driver (`qxl` or virtio-gpu) and, for QEMU/SPICE, `spice-vdagent`. Monitor names differ too — the VM X output is usually `Virtual-1`, so edit `local.conf` |
 
@@ -86,6 +86,12 @@ Reboot, log in, then follow [Install](#install). The repo is public, so
 
 ## Install
 
+> **Verified 2026-09-26:** a fresh `archinstall` (minimal profile) in a QEMU VM
+> (SPICE + virtio-vga), followed by clone → `packages.txt` → `./install.sh` →
+> `sudo bash system-files/install-system.sh`, came up with i3, the bar, rofi,
+> screenshots (maim/slop) and the GTK theme all working. The steps below are that
+> exact sequence.
+
 What `install.sh` does and doesn't do — this is the bit that trips people up:
 
 - **Does:** symlink all ~15 packages into `$HOME` with GNU Stow. Nothing else.
@@ -100,7 +106,7 @@ The full order for a fresh machine:
 sudo pacman -S --needed git stow
 git clone git@github.com:Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
 cd ~/i3-dotfiles
-sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')   # + AUR: zen-browser-bin, spotify-launcher
+sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')   # + AUR: zen-browser-bin (see below)
 
 # 2. user files
 ./install.sh
@@ -145,6 +151,27 @@ $EDITOR ~/.config/i3/local.conf ~/.config/i3/display.sh ~/.config/i3/machine.env
 
 Packages: `packages.txt` (`sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')`).
 
+### Optional: the one AUR package (the browser)
+
+`packages.txt` covers everything that lives in the official repos, including
+`spotify-launcher`. The only AUR package this setup wants is the browser
+(`$mod+b`), and installing it needs an AUR helper — bootstrap one like this:
+
+```sh
+sudo pacman -S --needed base-devel git          # build tools
+
+git clone https://aur.archlinux.org/paru.git /tmp/paru
+cd /tmp/paru && makepkg -si                     # no sudo: makepkg refuses to run as root
+
+paru -S zen-browser-bin                         # the browser
+```
+
+`yay` works identically — swap the clone URL and the rest is the same. Skip all of
+this if you don't want the browser: nothing else here needs an AUR helper.
+
+> On CachyOS repos both `paru` and `zen-browser-bin` are mirrored, so there it's
+> just `sudo pacman -S paru zen-browser-bin`.
+
 ## Machine-specific config
 
 `~/.config/i3/config` ends with `include ~/.config/i3/local.conf`. That file is
@@ -183,7 +210,7 @@ the script either auto-detects or stays quiet — so a stranger's clone behaves 
 sudo pacman -S --needed git stow
 git clone git@github.com:Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
 cd ~/i3-dotfiles
-sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')   # + AUR: zen-browser-bin, spotify-launcher
+sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')   # + AUR: zen-browser-bin (see below)
 
 # then deploy everything:
 ./install.sh
@@ -222,6 +249,46 @@ Laptop extras worth adding:
 | `$mod+m` | Spotify |
 | `Print` / `$mod+Shift+s` / `$mod+Print` | screenshot → file **and** clipboard: full / region / window (`$mod+Shift+Print` = click one) |
 | `Ctrl+Print` / `$mod+Ctrl+s` / `$mod+Ctrl+Print` | same, **clipboard only** (no file; `$mod+Ctrl+Shift+Print` = click one) |
+
+## Troubleshooting
+
+Problems actually hit while installing this on real machines:
+
+- **`pacman` fails with `<file> exists in filesystem`** (gschema / gtk / glib paths).
+  Those files are on disk but owned by no package — the signature of an earlier
+  pacman run that was interrupted (files extracted, database never updated). Every
+  later pacman run then hits the same wall, which makes it look like the repo is
+  broken. Cure:
+
+  ```sh
+  sudo rm -f /var/lib/pacman/db.lck
+  sudo pacman -S --overwrite='*' $(grep -v '^#' packages.txt | tr '\n' ' ')
+  ```
+
+  (`--overwrite='*'` only replaces files these packages ship themselves — it's the
+  documented fix for this error, not a blanket force.)
+
+- **`install.sh` says "GNU Stow is required"** — the packages aren't installed yet.
+  Step 1 of [Install](#install) handles `git stow`; the rest is `packages.txt`.
+
+- **`stow` aborts with "All operations aborted."** — a real file already exists
+  where a symlink should go (usually a leftover from an older dotfiles repo). One
+  conflict aborts the whole run. Check first with
+  `stow -n -v --target="$HOME" <package>`, then `stow -D <package>` or move the
+  offending file aside.
+
+- **Greeter on the wrong monitor, or at 60 Hz instead of 240** — the greeter draws
+  on the X server's *primary* output. `system-files/lightdm/50-i3.conf` documents
+  both fixes (`active-monitor=`, or `display-setup-script` +
+  `examples/lightdm-display-setup.sh`).
+
+- **No sound in an ALSA-only app (e.g. DaVinci Resolve)** — `pipewire-alsa` is the
+  ALSA→PipeWire bridge and is in `packages.txt`. (Resolve additionally can't decode
+  AAC on Linux at all — licensing — so imports need FLAC/PCM audio.)
+
+- **In a VM: X comes up black or not at all** — check the VM's video model (`qxl`
+  or virtio-gpu; plain `std` VGA is a bad time) and that `mesa` is installed (it's
+  in the list — virtio-vga needs it for GL / software rendering).
 
 ## Things worth knowing
 
