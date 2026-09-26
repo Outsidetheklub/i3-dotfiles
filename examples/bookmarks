@@ -1,0 +1,8 @@
+# Template for ~/.config/gtk-3.0/bookmarks — the shortcut list in GTK file
+# dialogs' sidebar. Personal, so it's NOT tracked (delete this comment when
+# you copy it):  cp examples/bookmarks ~/.config/gtk-3.0/bookmarks
+#
+# Replace <user> with your username.
+file:///home/<user>/Downloads Downloads
+file:///home/<user>/Pictures Pictures
+file:///home/<user>/Documents Documents

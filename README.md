@@ -28,6 +28,8 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `examples/local.conf` | `~/.config/i3/local.conf` | template for machine-specific i3 config |
 | `examples/display.sh` | `~/.config/i3/display.sh` | template for machine-specific xrandr setup |
 | `examples/lightdm-display-setup.sh` | `/usr/local/bin/` | template: pin the greeter's monitor + refresh rate (needs root) |
+| `examples/machine.env` | `~/.config/i3/machine.env` | template: night-light location, interfaces, screenshot dir (everything machine-specific) |
+| `examples/bookmarks` | `~/.config/gtk-3.0/bookmarks` | template: file-dialog sidebar shortcuts (personal, so never tracked) |
 
 `examples/` is not stowed — it's reference material.
 
