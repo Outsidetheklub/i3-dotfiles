@@ -25,7 +25,7 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `system-files/99-mouse-noaccel.conf` | `/etc/X11/xorg.conf.d/` | the actual fix for mouse acceleration (needs root) |
 | `system-files/NetworkManager/conf.d/wifi_backend.conf` | `/etc/NetworkManager/conf.d/` | wifi through iwd instead of wpa_supplicant (needs root) |
 | `system-files/lightdm/50-i3.conf` | `/etc/lightdm/lightdm.conf.d/` | LightDM seat: i3 session + GTK greeter (needs root) |
-| `system-files/install-system.sh` | — | installs all of the above with one `sudo bash` (idempotent, backs up) |
+| `system-files/install-system.sh` | — | all of the above in one `sudo bash`, plus it enables NetworkManager/Bluetooth and enables LightDM (idempotent, backs up) |
 | `examples/local.conf` | `~/.config/i3/local.conf` | template for machine-specific i3 config |
 | `examples/display.sh` | `~/.config/i3/display.sh` | template for machine-specific xrandr setup |
 | `examples/lightdm-display-setup.sh` | `/usr/local/bin/` | template: pin the greeter's monitor + refresh rate (needs root) |
@@ -44,12 +44,14 @@ repo while the i3 config lived in another.
 
 ## Prerequisites
 
-Base Arch install with an X session. This repo assumes a few things are already
-there (they're machine-specific, so they're deliberately **not** tracked):
+A base Arch install — that's all. Nothing graphical is assumed: the package list
+below pulls in X, i3 and the login manager (`lightdm` depends on `xorg-server`,
+which in turn brings the libinput input driver). The things in this table are the
+ones a package list can't give you, because they're machine-specific:
 
 | What | Command / note |
 |---|---|
-| Xorg | `sudo pacman -S xorg-server xorg-xinit` (lightdm pulls in the server anyway) |
+| Xorg | nothing to do — `lightdm` (in `packages.txt`) depends on `xorg-server`, which brings the server and the libinput driver |
 | GPU driver | **NVIDIA:** `nvidia-open-dkms nvidia-utils lib32-nvidia-utils` — the *open* kernel modules (Turing and newer; required for Blackwell/RTX 50). `nvidia-container-toolkit` too if you use davincibox. **AMD/Intel:** `mesa` + the usual. `/etc/X11/xorg.conf.d/10-nvidia.conf` is per-machine and not tracked |
 | Audio | `pipewire pipewire-pulse pipewire-alsa wireplumber` — in `packages.txt`; `pipewire-alsa` is what gives ALSA-only apps (DaVinci Resolve) sound |
 | Keyboard layout | machine-specific: `localectl set-x11-keymap <layout> [model]` — writes `/etc/X11/xorg.conf.d/00-keyboard.conf`, so this repo never needs a `setxkbmap` line |
@@ -62,6 +64,25 @@ Everything the repo itself needs is in `packages.txt`:
 ```sh
 sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')
 ```
+
+### Starting from the Arch ISO (archinstall)
+
+Choices that matter for this setup:
+
+- **Profile:** *Minimal* — `packages.txt` supplies everything else. (The *i3*
+  desktop profile also works and pre-installs X + i3 + a display manager, but the
+  repo is written against the Minimal route.)
+- **Network:** NetworkManager — the wifi rofi menu drives `nmcli`, so a
+  systemd-networkd-only install won't have it (install it afterwards if you skip it).
+- **Audio:** pipewire.
+- **Extra packages:** `git`, so you can clone this repo.
+- **Users:** your account in `wheel` with sudo, plus `video` (GPU apps expect it).
+- **multilib:** enable if you want 32-bit libs (`lib32-nvidia-utils`, Steam).
+- **Timezone / locale / keymap:** yours — but note the X11 keymap is a separate
+  step (`localectl`, see above).
+
+Reboot, log in, then follow [Install](#install). The repo is public, so
+`git clone https://github.com/Outsidetheklub/i3-dotfiles.git` needs no SSH key.
 
 ## Install
 
@@ -88,7 +109,8 @@ sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')   # + AUR: ze
 cp examples/local.conf examples/display.sh examples/machine.env ~/.config/i3/
 chmod +x ~/.config/i3/display.sh
 
-# 4. the root-side files, in one go
+# 4. the root-side files + services, in one go
+#    (mouse accel, iwd wifi backend, NetworkManager + bluetooth, LightDM)
 sudo bash system-files/install-system.sh
 
 # 5. keyboard layout for this machine, then reboot

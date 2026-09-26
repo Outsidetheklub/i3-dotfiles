@@ -54,6 +54,13 @@ bluez-utils
 sxiv
 mpv
 
+# X server + GL. xorg-server comes in with lightdm anyway (and that pulls the
+# libinput input driver), but it's listed so a box with nothing graphical
+# obviously ends up with a working X. mesa is GL / software rendering —
+# essential in a VM, which has no vendor driver to lean on.
+xorg-server
+mesa
+
 # Display manager (LightDM + GTK greeter; config in system-files/lightdm/)
 lightdm
 lightdm-gtk-greeter
