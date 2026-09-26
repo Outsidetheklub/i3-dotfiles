@@ -8,6 +8,10 @@
 #     conditional modules, and the default format_down is the literal
 #     text "No battery", which we do not want on the desktop bar.)
 #   • ethernet module dropped (wifi only → it only ever said "E: down")
+#   • memory uses memory_used_method = "memavailable" so %used matches btop/
+#     `free` (total - MemAvailable). i3status' default is "classical"
+#     (total - free - buffers - cached), which reads ~250M lower and doesn't
+#     add up to total next to %available. Added 2026-09-27.
 
 general {
         colors = false
@@ -32,6 +36,9 @@ disk "/" {
 
 memory {
         format = "%used | %available"
+        # "memavailable" = total - MemAvailable → matches btop and `free`'s
+        # "used" column. See the header note.
+        memory_used_method = "memavailable"
         threshold_degraded = "1G"
         format_degraded = "MEMORY < %available"
 }
