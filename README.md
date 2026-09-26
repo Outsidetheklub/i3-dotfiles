@@ -18,7 +18,6 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `i3/.config/i3/mouse-watch.sh` | `~/.config/i3/` | watchdog that keeps libinput mouse acceleration off (games reset it) |
 | `i3status/.config/i3status/config` | `~/.config/i3status/` | bar modules: wifi, disk free, RAM used/available, clock |
 | `rofi/.config/rofi/config.rasi` | `~/.config/rofi/` | launcher — black, centered, no icons. Also used by the power menu |
-| `dunst/.config/dunst/dunstrc` | `~/.config/dunst/` | notifications — flat black |
 | `picom/.config/picom/picom.conf` | `~/.config/picom/` | compositing + vsync only, no shadows/fading/transparency |
 | `local-bin/.local/bin/*` | `~/.local/bin/` | scripts: power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`), projector, mouse-to-focused, … |
 | `xprofile/.xprofile` | `~/.xprofile` | repaints the root window black (kills the ghost SDDM screen) |
@@ -129,7 +128,7 @@ Laptop extras worth adding:
 
 ## Things worth knowing
 
-- **Autostart is duplicate-guarded**: `picom`/`redshift`/`dunst` are started with
+- **Autostart is duplicate-guarded**: `picom`/`redshift` are started with
   `pgrep -x <name> || <name>`, and `mouse-watch.sh` has a `flock` singleton, so
   `$mod+Shift+r` brings back anything that died without stacking up copies.
 - **The bar is at the bottom** (`position bottom`), with a black/grey `colors`

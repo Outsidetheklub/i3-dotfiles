@@ -6,7 +6,6 @@ i3status
 i3lock
 picom
 redshift
-dunst
 rofi
 kitty
 thunar

@@ -22,11 +22,21 @@ set -u
 ROFI_BIN=${ROFI_BIN:-rofi}
 IFACE=${WLAN_IFACE:-wlan0}
 
+# Feedback is drawn by rofi itself — no notification daemon involved (dunst was
+# dropped 2026-09-26). Auto-closes after NOTIFY_TIMEOUT seconds so it behaves
+# like a toast; set NOTIFY_TIMEOUT=0 to keep it up until a key is pressed.
+NOTIFY_TIMEOUT=${NOTIFY_TIMEOUT:-4}
+
 notify() {
     if [ -n "${2:-}" ]; then
-        notify-send -a Network "$1" "$2"
+        msg=$(printf '%s\n%s' "$1" "$2")
     else
-        notify-send -a Network "$1"
+        msg=$1
+    fi
+    if [ "${NOTIFY_TIMEOUT}" -gt 0 ] 2>/dev/null; then
+        timeout "$NOTIFY_TIMEOUT" "$ROFI_BIN" -e "$msg" >/dev/null 2>&1 || true
+    else
+        "$ROFI_BIN" -e "$msg" >/dev/null 2>&1 || true
     fi
 }
 

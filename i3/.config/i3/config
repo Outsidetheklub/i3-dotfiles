@@ -54,8 +54,8 @@ exec_always --no-startup-id xsetroot -solid "#000000"
 exec_always --no-startup-id pgrep -x picom >/dev/null || picom -b
 # Night light (Stockholm)
 exec_always --no-startup-id pgrep -x redshift >/dev/null || redshift -l 59.33:18.07 &
-# Notification daemon — needed now that quickshell is gone
-exec_always --no-startup-id pgrep -x dunst >/dev/null || dunst
+# Notifications: no daemon. The wifi + bluetooth rofi scripts draw their own
+# feedback inside rofi (dunst was dropped 2026-09-26).
 # Wallpaper, polkit agent, flameshot retry, gamepad idle guard
 exec_always --no-startup-id $HOME/.config/i3/startup.sh
 # Mouse accel watchdog (self-guarding: flock singleton, exits if not on X)

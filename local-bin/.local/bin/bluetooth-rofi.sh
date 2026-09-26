@@ -12,7 +12,19 @@
 set -u
 
 pick() { rofi -dmenu -i -p "Bluetooth"; }
-notify() { notify-send -a Bluetooth "$1"; }
+# Feedback is drawn by rofi itself — no notification daemon (dunst was dropped
+# 2026-09-26). Auto-closes after NOTIFY_TIMEOUT s; set 0 for press-a-key-to-close.
+NOTIFY_TIMEOUT=${NOTIFY_TIMEOUT:-4}
+notify() {
+    if [ "${NOTIFY_TIMEOUT}" -gt 0 ] 2>/dev/null; then
+        timeout "$NOTIFY_TIMEOUT" rofi -e "$1" >/dev/null 2>&1 || true
+    else
+        rofi -e "$1" >/dev/null 2>&1 || true
+    fi
+}
+# Transient progress notes ("Scanning…", "Pairing…") are deliberately silent:
+# a modal dialog would block the very operation it describes.
+prog() { :; }
 mac_of() { printf '%s' "$1" | grep -oE '\(([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}\)' | tr -d '()'; }
 
 powered=$(bluetoothctl show 2>/dev/null | awk '/Powered:/ {print $2}')
@@ -55,7 +67,7 @@ case "$choice" in
         notify "Bluetooth powered off"
         ;;
     "Scan for new devices")
-        notify "Scanning for devices (~10s)…"
+        prog "Scanning for devices (~10s)…"
         bluetoothctl pairable on >/dev/null 2>&1
         scan=$(bluetoothctl --timeout 10 scan on 2>&1)
         found=$(printf '%s\n' "$scan" \
@@ -74,11 +86,11 @@ case "$choice" in
         if [ -n "${dev:-}" ]; then
             mac=$(printf '%s\n' "$found" | grep -F "|$dev" | head -1 | awk -F'|' '{print $1}')
             if [ -n "${mac:-}" ]; then
-                notify "Pairing with $dev…"
+                prog "Pairing with $dev…"
                 bluetoothctl pair "$mac" >/dev/null 2>&1
                 bluetoothctl trust "$mac" >/dev/null 2>&1   # auto-reconnect later
                 sleep 1
-                notify "Connecting to $dev…"
+                prog "Connecting to $dev…"
                 bluetoothctl connect "$mac" >/dev/null 2>&1 \
                     && notify "Connected to $dev" \
                     || notify "Could not connect to $dev"
@@ -89,7 +101,7 @@ case "$choice" in
     "Connect "*)
         ac=$(mac_of "$choice")
         nm=$(printf '%s' "$choice" | sed 's/^Connect //; s/ *([^)]*)$//')
-        notify "Connecting to $nm…"
+        prog "Connecting to $nm…"
         bluetoothctl connect "$ac" >/dev/null 2>&1 \
             && notify "Connected to $nm" \
             || notify "Could not connect to $nm"
