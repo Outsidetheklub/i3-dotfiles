@@ -25,6 +25,7 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `system-files/99-mouse-noaccel.conf` | `/etc/X11/xorg.conf.d/` | the actual fix for mouse acceleration (needs root) |
 | `system-files/NetworkManager/conf.d/wifi_backend.conf` | `/etc/NetworkManager/conf.d/` | wifi through iwd instead of wpa_supplicant (needs root) |
 | `system-files/lightdm/50-i3.conf` | `/etc/lightdm/lightdm.conf.d/` | LightDM seat: i3 session + GTK greeter (needs root) |
+| `system-files/install-system.sh` | — | installs all of the above with one `sudo bash` (idempotent, backs up) |
 | `examples/local.conf` | `~/.config/i3/local.conf` | template for machine-specific i3 config |
 | `examples/display.sh` | `~/.config/i3/display.sh` | template for machine-specific xrandr setup |
 | `examples/lightdm-display-setup.sh` | `/usr/local/bin/` | template: pin the greeter's monitor + refresh rate (needs root) |
@@ -53,7 +54,8 @@ there (they're machine-specific, so they're deliberately **not** tracked):
 | Audio | `pipewire pipewire-pulse pipewire-alsa wireplumber` — in `packages.txt`; `pipewire-alsa` is what gives ALSA-only apps (DaVinci Resolve) sound |
 | Keyboard layout | machine-specific: `localectl set-x11-keymap <layout> [model]` — writes `/etc/X11/xorg.conf.d/00-keyboard.conf`, so this repo never needs a `setxkbmap` line |
 | AUR helper | `base-devel git` + an AUR helper for `zen-browser-bin` and `spotify-launcher` (the two AUR packages this setup wants) |
-| Fonts | `noto-fonts` (in `packages.txt`) — the bar and terminal are plain `monospace` |
+| Fonts | `noto-fonts` for the bar/terminal (`monospace`) and `ttf-firacode-nerd` for GTK apps — both in `packages.txt` |
+| In a VM | no NVIDIA driver; use `mesa` + the VM's video driver (`qxl` or virtio-gpu) and, for QEMU/SPICE, `spice-vdagent`. Monitor names differ too — the VM X output is usually `Virtual-1`, so edit `local.conf` |
 
 Everything the repo itself needs is in `packages.txt`:
 
@@ -63,10 +65,34 @@ sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')
 
 ## Install
 
+What `install.sh` does and doesn't do — this is the bit that trips people up:
+
+- **Does:** symlink all ~15 packages into `$HOME` with GNU Stow. Nothing else.
+- **Doesn't:** install packages, create users, or touch `/etc`. It bails out if
+  `stow` isn't installed yet. The root-side files live in `system-files/` and
+  have their own script (see step 4).
+
+The full order for a fresh machine:
+
 ```sh
+# 1. packages (git + stow first: install.sh needs them)
+sudo pacman -S --needed git stow
 git clone git@github.com:Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
 cd ~/i3-dotfiles
+sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')   # + AUR: zen-browser-bin, spotify-launcher
+
+# 2. user files
 ./install.sh
+
+# 3. machine-specific config (edit the outputs for THIS box)
+cp examples/local.conf examples/display.sh examples/machine.env ~/.config/i3/
+chmod +x ~/.config/i3/display.sh
+
+# 4. the root-side files, in one go
+sudo bash system-files/install-system.sh
+
+# 5. keyboard layout for this machine, then reboot
+sudo localectl set-x11-keymap se pc105
 ```
 
 `install.sh` symlinks everything with GNU Stow (`stow --restow --target=$HOME`).
@@ -77,22 +103,18 @@ as a real file (or symlinked by another dotfiles repo), move it away first:
 stow -D <pkg>      # if some other repo already stows a package (e.g. an old dotfiles clone)
 ```
 
-Then the manual steps:
+Then the root-side files — one script, idempotent, backs up anything it replaces:
 
 ```sh
-# 1. mouse acceleration (root, not stowed)
-sudo cp system-files/99-mouse-noaccel.conf /etc/X11/xorg.conf.d/
+sudo bash system-files/install-system.sh      # mouse accel + wifi backend + LightDM
+```
 
-# 2. wifi backend (root, not stowed)
-sudo cp system-files/NetworkManager/conf.d/wifi_backend.conf /etc/NetworkManager/conf.d/
-sudo systemctl disable --now wpa_supplicant.service     # iwd takes over
+(It only installs the three files above and enables LightDM. To do it by hand, or
+to see exactly what it does, read the script — it's commented.)
 
-# 3. display manager (root, not stowed)
-sudo pacman -S --needed lightdm lightdm-gtk-greeter
-sudo install -Dm644 system-files/lightdm/50-i3.conf /etc/lightdm/lightdm.conf.d/50-i3.conf
-sudo systemctl disable sddm.service && sudo systemctl enable lightdm.service
+Then the machine-specific config:
 
-# 3. machine-specific config
+```sh
 cp examples/local.conf  ~/.config/i3/local.conf      # then edit output names
 cp examples/display.sh  ~/.config/i3/display.sh      # then edit, chmod +x
 cp examples/machine.env ~/.config/i3/machine.env     # location, interfaces, screenshot dir
@@ -143,12 +165,7 @@ sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')   # + AUR: ze
 
 # then deploy everything:
 ./install.sh
-sudo cp system-files/99-mouse-noaccel.conf /etc/X11/xorg.conf.d/
-sudo cp system-files/NetworkManager/conf.d/wifi_backend.conf /etc/NetworkManager/conf.d/
-sudo systemctl disable --now wpa_supplicant.service          # iwd backend
-sudo pacman -S --needed lightdm lightdm-gtk-greeter
-sudo install -Dm644 system-files/lightdm/50-i3.conf /etc/lightdm/lightdm.conf.d/50-i3.conf
-sudo systemctl enable lightdm.service
+sudo bash system-files/install-system.sh
 cp examples/local.conf ~/.config/i3/local.conf && cp examples/display.sh ~/.config/i3/display.sh
 cp examples/machine.env ~/.config/i3/machine.env
 chmod +x ~/.config/i3/display.sh

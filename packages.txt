@@ -24,9 +24,18 @@ xdotool
 stow
 adw-gtk-theme
 
-# Shell + font (the bar and terminal are plain monospace)
+# Shell + font (the bar and terminal are plain monospace; GTK apps ask for
+# FiraCode Nerd Font in gtk/.config/gtk-*/settings.ini)
 fish
 noto-fonts
+ttf-firacode-nerd
+
+# Terminal niceties the repo ships configs for
+starship
+fastfetch
+
+# XDG user dirs (~/Pictures etc.) — screenshot.sh and the GTK bookmarks use them
+xdg-user-dirs
 
 # Audio — PipeWire stack. wireplumber is the session manager; pipewire-alsa is
 # what lets ALSA-only apps (DaVinci Resolve) have sound at all.
@@ -52,6 +61,7 @@ lightdm-gtk-greeter
 # Not in the official repos:
 #   zen-browser-bin (AUR)  - default browser ($mod+b)
 #   spotify-launcher (AUR) - $mod+m
+#   (needs `base-devel git` + an AUR helper, e.g. paru/yay)
 #
 # Deliberately NOT needed: any Nerd Font, feh (no wallpaper by default),
 # cliphist (no clipboard history in this setup).
