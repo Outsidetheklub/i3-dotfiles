@@ -22,6 +22,10 @@ xdotool
 stow
 adw-gtk-theme
 
+# Display manager (LightDM + GTK greeter; config in system-files/lightdm/)
+lightdm
+lightdm-gtk-greeter
+
 # Not in the official repos:
 #   zen-browser-bin (AUR)  - default browser ($mod+b)
 #   spotify-launcher (AUR) - $mod+m

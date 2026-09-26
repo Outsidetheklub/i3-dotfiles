@@ -20,20 +20,22 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `rofi/.config/rofi/config.rasi` | `~/.config/rofi/` | launcher — black, centered, no icons. Also used by the power menu |
 | `picom/.config/picom/picom.conf` | `~/.config/picom/` | compositing + vsync only, no shadows/fading/transparency |
 | `local-bin/.local/bin/*` | `~/.local/bin/` | scripts: power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`), projector, mouse-to-focused, … |
-| `xprofile/.xprofile` | `~/.xprofile` | repaints the root window black (kills the ghost SDDM screen) |
+| `xprofile/.xprofile` | `~/.xprofile` | repaints the root window black (ghost login screen) + flatpak env |
 | `system-files/99-mouse-noaccel.conf` | `/etc/X11/xorg.conf.d/` | the actual fix for mouse acceleration (needs root) |
+| `system-files/lightdm/50-i3.conf` | `/etc/lightdm/lightdm.conf.d/` | LightDM seat: i3 session + GTK greeter (needs root) |
 | `examples/local.conf` | `~/.config/i3/local.conf` | template for machine-specific i3 config |
 | `examples/display.sh` | `~/.config/i3/display.sh` | template for machine-specific xrandr setup |
+| `examples/lightdm-display-setup.sh` | `/usr/local/bin/` | template: pin the greeter's monitor + refresh rate (needs root) |
 
 `examples/` is not stowed — it's reference material.
 
 Everything now lives in **this** repo — it absorbed the older `dotfiles` repo
-(GTK theme, fish, starship, fastfetch, flameshot, redshift, sddm, kitty, and the
+(GTK theme, fish, starship, fastfetch, flameshot, redshift, kitty, and the
 `local-bin` scripts). The old split was a headache: `~/.local/bin` pointed into one
 repo while the i3 config lived in another.
 
 **Also in here:** `gtk/`, `fish/`, `starship/`, `fastfetch/`, `flameshot/`,
-`redshift/`, `sddm/`, `kitty/`.
+`redshift/`, `kitty/`.
 
 ## Install
 
@@ -51,13 +53,18 @@ as a real file (or symlinked by another dotfiles repo), move it away first:
 stow -D <pkg>      # if some other repo already stows a package (e.g. an old dotfiles clone)
 ```
 
-Then the two manual steps:
+Then the manual steps:
 
 ```sh
 # 1. mouse acceleration (root, not stowed)
 sudo cp system-files/99-mouse-noaccel.conf /etc/X11/xorg.conf.d/
 
-# 2. machine-specific config
+# 2. display manager (root, not stowed)
+sudo pacman -S --needed lightdm lightdm-gtk-greeter
+sudo install -Dm644 system-files/lightdm/50-i3.conf /etc/lightdm/lightdm.conf.d/50-i3.conf
+sudo systemctl disable sddm.service && sudo systemctl enable lightdm.service
+
+# 3. machine-specific config
 cp examples/local.conf  ~/.config/i3/local.conf     # then edit output names
 cp examples/display.sh  ~/.config/i3/display.sh     # then edit, chmod +x
 $EDITOR ~/.config/i3/local.conf ~/.config/i3/display.sh
@@ -94,9 +101,13 @@ sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')   # + AUR: ze
 # then deploy everything:
 ./install.sh
 sudo cp system-files/99-mouse-noaccel.conf /etc/X11/xorg.conf.d/
+sudo pacman -S --needed lightdm lightdm-gtk-greeter
+sudo install -Dm644 system-files/lightdm/50-i3.conf /etc/lightdm/lightdm.conf.d/50-i3.conf
+sudo systemctl enable lightdm.service
 cp examples/local.conf ~/.config/i3/local.conf && cp examples/display.sh ~/.config/i3/display.sh
 chmod +x ~/.config/i3/display.sh
-# edit both for this machine's outputs, then log out and pick i3 in SDDM
+# edit both for this machine's outputs, then log out and pick i3 in LightDM
+# greeter on the wrong monitor? install examples/lightdm-display-setup.sh (see its header)
 # check first: i3 -C -c ~/.config/i3/config
 ```
 
