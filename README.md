@@ -14,12 +14,12 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | Path | Goes to | What it does |
 |---|---|---|
 | `i3/.config/i3/config` | `~/.config/i3/` | the whole WM config — keybinds, autostart. Includes `local.conf` for machine-specific parts |
-| `i3/.config/i3/startup.sh` | `~/.config/i3/` | polkit agent, flameshot, gamepad idle guard, calls `display.sh` if present |
+| `i3/.config/i3/startup.sh` | `~/.config/i3/` | polkit agent, gamepad idle guard, calls `display.sh` if present |
 | `i3/.config/i3/mouse-watch.sh` | `~/.config/i3/` | watchdog that keeps libinput mouse acceleration off (games reset it) |
 | `i3status/.config/i3status/config` | `~/.config/i3status/` | bar modules: wifi, disk free, RAM used/available, clock |
 | `rofi/.config/rofi/config.rasi` | `~/.config/rofi/` | launcher — black, centered, no icons. Also used by the power menu |
 | `picom/.config/picom/picom.conf` | `~/.config/picom/` | compositing + vsync only, no shadows/fading/transparency |
-| `local-bin/.local/bin/*` | `~/.local/bin/` | scripts: power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`), projector, mouse-to-focused, … |
+| `local-bin/.local/bin/*` | `~/.local/bin/` | scripts: power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`), wifi menu (`$mod+Shift+n`), screenshots (`Print`, `$mod+Shift+s`), projector, mouse-to-focused, … |
 | `xprofile/.xprofile` | `~/.xprofile` | repaints the root window black (ghost login screen) + flatpak env |
 | `system-files/99-mouse-noaccel.conf` | `/etc/X11/xorg.conf.d/` | the actual fix for mouse acceleration (needs root) |
 | `system-files/lightdm/50-i3.conf` | `/etc/lightdm/lightdm.conf.d/` | LightDM seat: i3 session + GTK greeter (needs root) |
@@ -30,11 +30,11 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 `examples/` is not stowed — it's reference material.
 
 Everything now lives in **this** repo — it absorbed the older `dotfiles` repo
-(GTK theme, fish, starship, fastfetch, flameshot, redshift, kitty, and the
+(GTK theme, fish, starship, fastfetch, redshift, kitty, and the
 `local-bin` scripts). The old split was a headache: `~/.local/bin` pointed into one
 repo while the i3 config lived in another.
 
-**Also in here:** `gtk/`, `fish/`, `starship/`, `fastfetch/`, `flameshot/`,
+**Also in here:** `gtk/`, `fish/`, `starship/`, `fastfetch/`,
 `redshift/`, `kitty/`.
 
 ## Install
@@ -135,7 +135,8 @@ Laptop extras worth adding:
 | `$mod+r` | resize mode (h/j/k/l, Enter/Esc to exit) |
 | `$mod+Shift+c` / `$mod+Shift+r` | reload / restart i3 |
 | `$mod+m` | Spotify |
-| Print / `$mod+Shift+s` | flameshot full / region |
+| `Print` / `$mod+Shift+s` / `$mod+Print` | screenshot → file **and** clipboard: full / region / window (`$mod+Shift+Print` = click one) |
+| `Ctrl+Print` / `$mod+Ctrl+s` / `$mod+Ctrl+Print` | same, **clipboard only** (no file; `$mod+Ctrl+Shift+Print` = click one) |
 
 ## Things worth knowing
 

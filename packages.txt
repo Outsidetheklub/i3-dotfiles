@@ -11,7 +11,9 @@ kitty
 thunar
 pavucontrol
 polkit-gnome
-flameshot
+maim
+slop
+xclip
 playerctl
 brightnessctl
 wireplumber

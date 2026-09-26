@@ -1,4 +1,0 @@
-# flameshot.ini is a plain copy by design (the app rewrites it on every save,
-# so stowing it just makes git noisy). Kept out of stow for that reason.
-\.config/flameshot/flameshot\.ini$
-\.stow-local-ignore$

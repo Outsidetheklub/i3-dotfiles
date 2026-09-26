@@ -13,7 +13,7 @@ fi
 
 # Everything used on either machine now lives in this repo — there is no separate
 # "main dotfiles" repo any more (it was merged in here).
-PACKAGES="i3 i3status rofi picom xprofile fastfetch fish flameshot gtk kitty local-bin redshift starship"
+PACKAGES="i3 i3status rofi picom xprofile fastfetch fish gtk kitty local-bin redshift starship"
 
 for pkg in $PACKAGES; do
     [ -d "$pkg" ] || { echo "missing package dir: $pkg" >&2; exit 1; }

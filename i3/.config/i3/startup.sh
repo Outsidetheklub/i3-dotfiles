@@ -1,6 +1,6 @@
 #!/bin/sh
 # i3 startup — 2026-09-22 (rebuilt from zero, trimmed to the essentials)
-# Wallpaper + polkit + flameshot + gamepad guard.
+# Wallpaper + polkit + gamepad guard.
 # Mouse accel is handled system-wide (/etc/X11/xorg.conf.d/99-mouse-noaccel.conf
 # + mouse-watch.sh). Quickshell was removed from the i3 setup on 2026-09-22.
 
@@ -28,16 +28,9 @@ xsetroot -solid "#000000"
 pgrep -f "[p]olkit-gnome-authentication-agent-1" >/dev/null 2>&1 || \
     /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &
 
-# Flameshot — the xdg portal isn't ready at boot, so it exits immediately;
-# skip if already running, otherwise retry until it sticks.
-(
-    pgrep -x flameshot >/dev/null 2>&1 && exit 0
-    for i in 1 2 3 4 5 6; do
-        flameshot >/dev/null 2>&1 &
-        sleep 3
-        pgrep -x flameshot >/dev/null 2>&1 && break
-    done
-) &
+# Screenshots need no daemon any more: maim + slop + xclip, via
+# ~/.local/bin/screenshot.sh (bound to Print / $mod+Shift+s in the i3 config).
+# flameshot's login-time retry loop is gone with it — see 2026-09-26.
 
 # Gamepad idle guard — DPMS can't see controller input, so it would blank the
 # screen mid-game ("AFK"). Disables blanking while the gamepad is in use and
