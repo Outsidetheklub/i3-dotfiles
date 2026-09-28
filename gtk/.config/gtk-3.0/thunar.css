@@ -136,7 +136,7 @@
 .thunar .frame.standard-view {
     padding: 10px;
     margin: 10px 15px 0 0;
-    border-radius: 15px;
+    border-radius: 0;
     background-color: #000000;
     animation: fading 400ms ease forwards;
     opacity: 0;
@@ -199,7 +199,7 @@
 
 .thunar .sidebar .view {
     padding: 8px 4px;
-    border-radius: 10px;
+    border-radius: 0;
     background: none;
     transition: all ease 300ms;
 }
@@ -269,7 +269,7 @@
 
 .thunar statusbar {
     background-color: #000000;
-    border-radius: 15px;
+    border-radius: 0;
     padding: 10px 10px;
     margin: 15px 5px 15px -10px;
     color: #ffffff;
