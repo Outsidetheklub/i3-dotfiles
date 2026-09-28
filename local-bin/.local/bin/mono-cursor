@@ -1,0 +1,242 @@
+#!/usr/bin/env python3
+"""mono-cursor — build a monochrome copy of a cursor theme and activate it.
+
+Why: Breeze Light ships a *colourful* busy spinner (KDE blue) plus a handful of
+other coloured cursors (help, no-drop, not-allowed, copy, size handles, fleur,
+alias, x-cursor, ...). On a black-and-white desktop that sticks out. This
+generates a copy of the theme with every coloured cursor greyscaled.
+
+How: it rewrites **pixel colour only — never resamples**. So native sizes,
+hotspots and animation frames are preserved bit-for-bit; only hues change.
+Colour->grey is done on premultiplied ARGB correctly (unpremultiply -> luma ->
+re-premultiply), which keeps the alpha shading intact.
+
+It then points every cursor setting at the generated theme. X11 setups scatter
+these across five places, so all of them get written:
+  * ~/.xprofile                      XCURSOR_THEME / XCURSOR_SIZE (X11-native)
+  * ~/.config/gtk-3.0/settings.ini   gtk-cursor-theme-name / -size
+  * ~/.config/gtk-4.0/settings.ini   same
+  * gsettings (dconf)                org.gnome.desktop.interface cursor-theme
+  * ~/.config/kcminputrc             [Mouse] cursorTheme (KDE/Qt)
+  * ~/.local/share/icons/default/index.theme   Inherits= fallback
+
+Run after a fresh install, or after a Breeze update. Then LOG OUT AND BACK IN —
+XCURSOR_THEME must exist before i3 starts, so `i3-msg restart` is not enough.
+
+⚠️ SIZE=24 on purpose: Breeze declares its sizes at 3/4 of the real pixel size
+(nominal 24 renders as 32x32, nominal 30 as 40x40). To get a 32px cursor you
+must ask for 24. Don't "fix" this to 32 — that yields 40px.
+"""
+import os
+import struct
+import subprocess
+import sys
+
+SRC_THEME = "Breeze_Light"          # theme to clone
+OUT_THEME = "breeze-mono-light"     # result (this is what gets activated)
+NOMINAL_SIZE = 24                   # 24 nominal == 32px real for Breeze
+SAT_THRESHOLD = 0.25                # above this a cursor counts as coloured
+
+ICONS = os.path.expanduser("~/.local/share/icons")
+SRC_DIR = f"/usr/share/icons/{SRC_THEME}/cursors"
+OUT_DIR = f"{ICONS}/{OUT_THEME}/cursors"
+
+# ---------------------------------------------------------------- xcursor format
+IMAGE_TYPE = 0xFFFD0002
+
+
+def read_xcursor(path):
+    """-> [(nominal_size, w, h, xhot, yhot, delay, bytearray ARGB premultiplied)]"""
+    with open(path, "rb") as f:
+        data = f.read()
+    magic, hdr, ver, ntoc = struct.unpack_from("<IIII", data, 0)
+    if magic != 0x72756358:
+        raise ValueError(f"{path}: not an Xcursor file")
+    out = []
+    for i in range(ntoc):
+        typ, sub, pos = struct.unpack_from("<III", data, 16 + i * 12)
+        if typ != IMAGE_TYPE:
+            continue                                    # e.g. comment chunk
+        chdr, ctyp, csub, cver, w, h, xh, yh, delay = struct.unpack_from("<IIIIIIIII", data, pos)
+        if chdr != 36:
+            raise ValueError(f"{path}: unexpected chunk header {chdr}")
+        n = w * h * 4
+        px = bytearray(data[pos + 36:pos + 36 + n])
+        if len(px) != n:
+            raise ValueError(f"{path}: truncated pixel data")
+        out.append((sub, w, h, xh, yh, delay, px))
+    return out
+
+
+def write_xcursor(path, images):
+    ntoc = len(images)
+    body, toc = b"", b""
+    pos = 16 + 12 * ntoc
+    for (sub, w, h, xh, yh, delay, px) in images:
+        toc += struct.pack("<III", IMAGE_TYPE, sub, pos + len(body))
+        body += struct.pack("<IIIIIIIII", 36, IMAGE_TYPE, sub, 1, w, h, xh, yh, delay) + bytes(px)
+    with open(path, "wb") as f:
+        f.write(struct.pack("<IIII", 0x72756358, 16, 0x00010000, ntoc) + toc + body)
+
+
+def max_saturation(px):
+    mx = 0.0
+    for i in range(0, len(px), 4):
+        a = px[i + 3]
+        if a < 40:
+            continue
+        r, g, b = px[i], px[i + 1], px[i + 2]
+        if a:                                    # unpremultiply for a true hue read
+            r, g, b = min(255, r * 255 // a), min(255, g * 255 // a), min(255, b * 255 // a)
+        hi, lo = max(r, g, b), min(r, g, b)
+        if hi:
+            mx = max(mx, (hi - lo) / hi)
+    return mx
+
+
+def greyify(px):
+    """Colour -> grey, keeping premultiplied ARGB semantics."""
+    for i in range(0, len(px), 4):
+        a = px[i + 3]
+        if a == 0:
+            px[i] = px[i + 1] = px[i + 2] = 0
+            continue
+        r, g, b = px[i], px[i + 1], px[i + 2]
+        ur = min(255, r * 255 // a); ug = min(255, g * 255 // a); ub = min(255, b * 255 // a)
+        L = (299 * ur + 587 * ug + 114 * ub) // 1000      # perceptual luma
+        px[i] = px[i + 1] = px[i + 2] = min(255, L * a // 255)
+    return px
+
+
+# ---------------------------------------------------------------- build the theme
+def build_theme():
+    if not os.path.isdir(SRC_DIR):
+        sys.exit(f"error: {SRC_DIR} not found (install the 'breeze-cursors' package)")
+    names = sorted(os.listdir(SRC_DIR))
+
+    def resolve(name, seen=None):
+        """follow symlinks inside the source cursors dir -> real file name"""
+        seen = seen or set()
+        p = f"{SRC_DIR}/{name}"
+        if name in seen or not os.path.islink(p):
+            return name
+        seen.add(name)
+        return resolve(os.readlink(p), seen)
+
+    files = {n: read_xcursor(f"{SRC_DIR}/{n}") for n in names if not os.path.islink(f"{SRC_DIR}/{n}")}
+    recolour = {n for n, imgs in files.items()
+                if any(max_saturation(im[6]) > SAT_THRESHOLD for im in imgs)}
+    # a name must be copied if it (transitively) resolves to a recoloured file
+    wanted = sorted({n for n in names if resolve(n) in recolour})
+
+    os.makedirs(OUT_DIR, exist_ok=True)
+    for stale in os.listdir(OUT_DIR):
+        os.remove(f"{OUT_DIR}/{stale}")
+
+    bytes_out = 0
+    for n in wanted:
+        src = f"{SRC_DIR}/{n}"
+        dst = f"{OUT_DIR}/{n}"
+        if os.path.islink(src):
+            os.symlink(os.readlink(src), dst)
+        else:
+            imgs = [(s, w, h, xh, yh, d, greyify(px)) for (s, w, h, xh, yh, d, px) in files[n]]
+            write_xcursor(dst, imgs)
+            bytes_out += os.path.getsize(dst)
+
+    with open(f"{ICONS}/{OUT_THEME}/index.theme", "w") as f:
+        f.write("[Icon Theme]\nName=Breeze Mono Light\n"
+                "Comment=Breeze Light with coloured cursors (busy spinner included) made\n"
+                " monochrome. Generated by ~/.local/bin/mono-cursor — do not edit by hand.\n"
+                f"Inherits={SRC_THEME}\n")
+    print(f"theme   : {OUT_THEME}  ({len(wanted)} files copied from {SRC_THEME}, "
+          f"{len(recolour)} recoloured, {bytes_out // 1024} KiB)")
+    return names
+
+
+# ---------------------------------------------------------------- apply settings
+def patch_lines(path, replacements, header=None):
+    """Replace 'key=...' lines in a file. Writes through symlinks (unlike sed -i)."""
+    try:
+        with open(path) as f:
+            lines = f.read().splitlines(True)
+    except FileNotFoundError:
+        lines = []
+    seen = set()
+    out = []
+    for line in lines:
+        for key, val in replacements.items():
+            if line.startswith(key + "=") or line.startswith("export " + key + "="):
+                prefix = "export " if line.startswith("export ") else ""
+                out.append(f"{prefix}{key}={val}\n")
+                seen.add(key)
+                break
+        else:
+            out.append(line)
+    missing = [k for k in replacements if k not in seen]
+    if missing:
+        if header and (not lines or lines[-1].strip()):
+            out.append("\n")
+        if header:
+            out.append(header)
+        for k in missing:
+            out.append(f"{k}={replacements[k]}\n" if not k.startswith("XCURSOR")
+                       else f"export {k}={replacements[k]}\n")
+    with open(path, "w") as f:
+        f.write("".join(out))
+    return missing
+
+
+def apply_settings():
+    name, size = OUT_THEME, str(NOMINAL_SIZE)
+    home = os.path.expanduser("~")
+
+    patch_lines(f"{home}/.xprofile",
+                {"XCURSOR_THEME": f'"{name}"', "XCURSOR_SIZE": size},
+                header="# Cursor theme (breeze-mono-light): X11-native apps read these at login.\n")
+    for v in ("3.0", "4.0"):
+        patch_lines(f"{home}/.config/gtk-{v}/settings.ini",
+                    {"gtk-cursor-theme-name": name, "gtk-cursor-theme-size": size})
+
+    # KDE/Qt
+    kc = f"{home}/.config/kcminputrc"
+    try:
+        conf = open(kc).read()
+    except FileNotFoundError:
+        conf = ""
+    if "[Mouse]" not in conf:
+        conf += f"\n[Mouse]\ncursorTheme={name}\ncursorSize={size}\n"
+    else:
+        lines, insec = [], False
+        for line in conf.splitlines(True):
+            if line.startswith("["):
+                insec = line.strip() == "[Mouse]"
+            elif insec and line.startswith("cursorTheme="):
+                line = f"cursorTheme={name}\n"
+            elif insec and line.startswith("cursorSize="):
+                line = f"cursorSize={size}\n"
+            lines.append(line)
+        conf = "".join(lines)
+    with open(kc, "w") as f:
+        f.write(conf)
+
+    # apps that ask for the generic "default" cursor
+    os.makedirs(f"{ICONS}/default", exist_ok=True)
+    with open(f"{ICONS}/default/index.theme", "w") as f:
+        f.write("[Icon Theme]\nInherits=%s\n" % name)
+
+    for args in (("cursor-theme", name), ("cursor-size", size)):
+        try:
+            subprocess.run(["gsettings", "set", "org.gnome.desktop.interface", *args],
+                           check=True, capture_output=True)
+        except (OSError, subprocess.CalledProcessError) as e:
+            print(f"warning: gsettings {args[0]} not set ({e})")
+    print(f"settings: xprofile, gtk-3.0, gtk-4.0, kcminputrc, default/index.theme, "
+          f"gsettings -> {name} @ {size} (nominal)")
+
+
+if __name__ == "__main__":
+    build_theme()
+    apply_settings()
+    print("\nDone. LOG OUT AND BACK IN for X11-native apps (kitty, rofi, i3 borders);")
+    print("GTK apps pick it up as soon as they're restarted.")

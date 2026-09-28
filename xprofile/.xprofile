@@ -5,3 +5,13 @@ xsetroot -solid "#000000"
 
 # Make Flatpak apps show up in rofi and other desktop tools
 [ -r /etc/profile.d/flatpak.sh ] && . /etc/profile.d/flatpak.sh
+
+# Cursor theme (set 2026-09-28): "breeze-mono-light" — Breeze Light with the
+# coloured cursors (incl. the busy spinner) made monochrome. X11-native apps
+# read these env vars at startup; GTK has gtk-cursor-theme-name
+# (gtk-*/settings.ini), KDE/Qt read kcminputrc, dconf apps read gsettings.
+# Keep all of them in sync.
+# NB: Breeze declares sizes at 3/4 of the real pixel size (nominal 24 renders as
+# 32x32), so 24 here = a 32px cursor.
+export XCURSOR_THEME="breeze-mono-light"
+export XCURSOR_SIZE=24
