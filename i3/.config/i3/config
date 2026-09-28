@@ -10,8 +10,8 @@
 #  Quickshell is OUT: no autostart, no qs binds, no floating rules.
 #  Launcher + power menu are back on rofi, which uses the single minimal
 #  theme in ~/.config/rofi/config.rasi (black, centered, no icons).
-#  Everything else is stock/black: kitty default colours, i3bar default
-#  colours, dunst default, picom with no effects.
+#  Everything else is stock/black: kitty default colours, i3bar default colours.
+#  No compositor: picom was dropped on 2026-09-28.
 #
 #  Old config is still in git:  github.com/Outsidetheklub/dotfiles (retired repo)
 #  (backup copy: /tmp/i3-reset-2026-09-22/config)
@@ -50,8 +50,6 @@ new_float none
 # brings back anything that died without stacking up extra copies.
 # Clear the ghost SDDM screen
 exec_always --no-startup-id xsetroot -solid "#000000"
-# Compositing — shadows off, xrender backend, vsync (~/.config/picom/picom.conf)
-exec_always --no-startup-id pgrep -x picom >/dev/null || picom -b
 # Night light now runs from startup.sh, using $REDSHIFT_LOCATION out of
 # ~/.config/i3/machine.env — nothing machine-specific is baked into this config.
 # Notifications: no daemon. The wifi + bluetooth rofi scripts draw their own

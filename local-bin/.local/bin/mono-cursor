@@ -156,7 +156,12 @@ def build_theme():
 
 # ---------------------------------------------------------------- apply settings
 def patch_lines(path, replacements, header=None):
-    """Replace 'key=...' lines in a file. Writes through symlinks (unlike sed -i)."""
+    """Replace 'key=...' lines in a file. Writes through symlinks (unlike sed -i).
+
+    Creates the file *and its parent directories* if missing — on a machine where
+    the gtk package isn't stowed yet, ~/.config/gtk-3.0/ may not exist.
+    """
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     try:
         with open(path) as f:
             lines = f.read().splitlines(True)

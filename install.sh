@@ -13,14 +13,31 @@ fi
 
 # Everything used on either machine now lives in this repo — there is no separate
 # "main dotfiles" repo any more (it was merged in here).
-PACKAGES="i3 i3status rofi picom xprofile fastfetch fish gtk kitty local-bin redshift starship"
+PACKAGES="i3 i3status rofi xprofile fastfetch fish gtk kitty local-bin redshift starship"
 
 for pkg in $PACKAGES; do
     [ -d "$pkg" ] || { echo "missing package dir: $pkg" >&2; exit 1; }
+    # local-bin owns ~/.local/bin. Without --no-folding, stow would fold ~/.local
+    # itself into a symlink back into this repo - and then everything any app
+    # writes to ~/.local/share, ~/.local/state, ... would land in the repo and
+    # show up as stray untracked files. Keep ~/.local a real directory.
+    extra=""
+    [ "$pkg" = local-bin ] && extra="--no-folding"
     echo "==> stow $pkg"
-    stow --restow --target="$HOME" "$pkg"
+    stow --restow $extra --target="$HOME" "$pkg"
 done
 
+# Monochrome cursor theme. Regenerates Breeze_Light as ~/.local/share/icons/
+# breeze-mono-light (every coloured cursor greyscaled) and points all six cursor
+# settings at it. Needs python (stdlib only) + breeze-cursors (the source theme).
+# Non-fatal on purpose: a cursor theme should never break an install.
+if command -v python3 >/dev/null 2>&1 && [ -d /usr/share/icons/Breeze_Light ]; then
+    echo "==> mono-cursor (monochrome Breeze cursor theme)"
+    "$HOME/.local/bin/mono-cursor" || \
+        echo "   !! mono-cursor failed - cursor theme NOT applied (safe to re-run later)" >&2
+else
+    echo "==> skipping mono-cursor: needs 'python' + 'breeze-cursors' (see packages.txt)"
+fi
 echo
 # Root-owned files are not stowed (they live outside $HOME).
 echo "Done. Remaining manual steps:"

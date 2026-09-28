@@ -18,8 +18,7 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `i3/.config/i3/mouse-watch.sh` | `~/.config/i3/` | watchdog that keeps libinput mouse acceleration off (games reset it) |
 | `i3status/.config/i3status/config` | `~/.config/i3status/` | bar modules: wifi, disk free, RAM used/available, clock |
 | `rofi/.config/rofi/config.rasi` | `~/.config/rofi/` | launcher — black, centered, no icons. Also used by the power menu |
-| `picom/.config/picom/picom.conf` | `~/.config/picom/` | compositing + vsync only, no shadows/fading/transparency |
-| `local-bin/.local/bin/*` | `~/.local/bin/` | scripts: power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`), wifi menu (`$mod+Shift+n`), screenshots (`Print`, `$mod+Shift+s`), projector, mouse-to-focused, … |
+| `local-bin/.local/bin/*` | `~/.local/bin/` | scripts: power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`), wifi menu (`$mod+Shift+n`), screenshots (`Print`, `$mod+Shift+s`), projector, mouse-to-focused, monochrome cursor builder (`mono-cursor`), … |
 | `gtk/.config/mimeapps.list` | `~/.config/` | file associations: **sxiv** for images, **mpv** for video, zen for links/HTML. Apps may append to this — that shows up as a real diff, which is the point |
 | `xprofile/.xprofile` | `~/.xprofile` | repaints the root window black (ghost login screen) + flatpak env |
 | `system-files/99-mouse-noaccel.conf` | `/etc/X11/xorg.conf.d/` | the actual fix for mouse acceleration (needs root) |
@@ -42,6 +41,32 @@ repo while the i3 config lived in another.
 **Also in here:** `gtk/`, `fish/`, `starship/`, `fastfetch/`,
 `redshift/`, `kitty/`.
 
+### Cursor theme
+
+One thing in this setup *is* themed, because the alternative is worse: the cursor.
+Breeze's cursor set is the least intrusive one around, but its busy spinner is
+KDE-blue and a few other cursors (`help`, `no-drop`, `size-*`, `copy`, …) are
+coloured too — loud on a black-and-white desktop.
+
+`local-bin/.local/bin/mono-cursor` fixes that by **generating** a corrected theme
+rather than shipping one:
+
+- clones `Breeze_Light` to `~/.local/share/icons/breeze-mono-light` with every
+  coloured cursor greyscaled (colour only, **never resampled** — native sizes,
+  hotspots and animation frames are preserved bit-for-bit);
+- writes all six places a cursor setting can hide: `~/.xprofile`
+  (`XCURSOR_THEME`/`XCURSOR_SIZE`), GTK 3 + 4 `settings.ini`, `kcminputrc`,
+  `~/.local/share/icons/default/index.theme` and `gsettings`;
+- deterministic + idempotent, and it writes *through* the stow symlinks instead
+  of replacing them.
+
+`install.sh` runs it for you; re-run it by hand after a Breeze update. Changes
+only take effect after **logging out and back in** (`XCURSOR_THEME` must exist
+before i3 starts, so `i3-msg restart` isn't enough).
+
+⚠️ **Don't "fix" the size to 32.** Breeze declares its sizes at 3/4 of the real
+pixel size, so `XCURSOR_SIZE=24` renders a 32px cursor and 32 would give 40px.
+
 ## Prerequisites
 
 A base Arch install — that's all. Nothing graphical is assumed: the package list
@@ -57,6 +82,7 @@ ones a package list can't give you, because they're machine-specific:
 | Keyboard layout | machine-specific: `localectl set-x11-keymap <layout> [model]` — writes `/etc/X11/xorg.conf.d/00-keyboard.conf`, so this repo never needs a `setxkbmap` line |
 | AUR helper | only for the browser: `base-devel git` + an AUR helper (paru/yay) for `zen-browser-bin` — 3-line recipe below. Everything else in `packages.txt` is in the official repos, `spotify-launcher` included |
 | Fonts | `noto-fonts` for the bar/terminal (`monospace`) and `ttf-firacode-nerd` for GTK apps — both in `packages.txt` |
+| Cursor theme | nothing to do — `install.sh` builds the monochrome Breeze set itself. `breeze-cursors` (the source theme) + `python` are in `packages.txt` for that |
 | In a VM | no NVIDIA driver; use `mesa` + the VM's video driver (`qxl` or virtio-gpu) and, for QEMU/SPICE, `spice-vdagent`. Monitor names differ too — the VM X output is usually `Virtual-1`, so edit `local.conf` |
 
 Everything the repo itself needs is in `packages.txt`:
@@ -94,7 +120,9 @@ Reboot, log in, then follow [Install](#install). The repo is public, so
 
 What `install.sh` does and doesn't do — this is the bit that trips people up:
 
-- **Does:** symlink all ~15 packages into `$HOME` with GNU Stow. Nothing else.
+- **Does:** symlink all ~15 packages into `$HOME` with GNU Stow, then build +
+  activate the monochrome cursor theme (`mono-cursor`; skipped with a note if
+  `python`/`breeze-cursors` are missing).
 - **Doesn't:** install packages, create users, or touch `/etc`. It bails out if
   `stow` isn't installed yet. The root-side files live in `system-files/` and
   have their own script (see step 4).
@@ -292,9 +320,10 @@ Problems actually hit while installing this on real machines:
 
 ## Things worth knowing
 
-- **Autostart is duplicate-guarded**: `picom`/`redshift` are started with
+- **Autostart is duplicate-guarded**: `redshift` is started with
   `pgrep -x <name> || <name>`, and `mouse-watch.sh` has a `flock` singleton, so
   `$mod+Shift+r` brings back anything that died without stacking up copies.
+  No compositor is run at all (picom was dropped on 2026-09-28).
 - **The bar is at the bottom** (`position bottom`), with a black/grey `colors`
   block because i3's stock blue for the focused workspace doesn't fit.
 - **No Nerd Fonts are required** — the power menu uses plain words, so default

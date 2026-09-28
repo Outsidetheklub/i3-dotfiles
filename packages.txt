@@ -4,7 +4,6 @@
 i3-wm
 i3status
 i3lock
-picom
 redshift
 rofi
 kitty
@@ -23,6 +22,11 @@ xorg-xsetroot
 xdotool
 stow
 adw-gtk-theme
+breeze-cursors
+
+# python — only used by local-bin/mono-cursor (stdlib only), which rebuilds the
+# Breeze cursor set in monochrome and activates it. install.sh runs it at the end.
+python
 
 # Shell + font (the bar and terminal are plain monospace; GTK apps ask for
 # FiraCode Nerd Font in gtk/.config/gtk-*/settings.ini)
