@@ -356,18 +356,16 @@ menu separator {
    ============================================================================= */
 
 /* --- Terminal font --------------------------------------------------------
- * Deliberately the SAME font the terminal itself uses: kitty.conf sets no
- * font_family, so kitty renders the fontconfig default for "monospace"
- * (Noto Sans Mono) at size 11. Asking for plain `monospace` here resolves to
- * exactly that, so the file list reads like `ls` output in the terminal.
- * Swap in "FiraCode Nerd Font" instead if you'd rather keep the Nerd Font
- * (the only practical difference: nerd-font glyphs in filenames render here).
+ * Terminus — the classic console face, added 2026-09-29 (see kitty.conf for the
+ * install story). Asks for the same family the terminal uses; the fallback
+ * keeps it working if the font is ever missing. 12pt ≈ the 11pt `monospace`
+ * this file used before (Terminus renders smaller at equal pt).
  * NOTE: row height is NOT driven by the font — Thunar sizes rows from its
  * 18px list icons, so the pitch stays 28px whatever the font does. */
 .thunar,
 .thunar * {
-    font-family: monospace;
-    font-size: 11pt;
+    font-family: "Terminess Nerd Font Mono", monospace;
+    font-size: 12pt;
 }
 
 /* --- Instant, no fades/slides (terminals don't animate) -------------------- */

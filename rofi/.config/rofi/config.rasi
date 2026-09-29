@@ -1,7 +1,8 @@
-/* Font: deliberately unset → rofi's own default (monospace). Set `font:` in the
-   configuration block above if you ever want something specific. */
+/* Font: Terminus, matching the rest of the desktop (see kitty.conf).
+   rofi's own default would be `mono 12`. */
 
 configuration {
+    font: "Terminess Nerd Font Mono 13";
     modi: "drun,run";
     show-icons: false;
     drun-display-format: "{name}";

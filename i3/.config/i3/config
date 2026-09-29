@@ -23,9 +23,10 @@ set $browser zen-browser
 set $editor vscodium
 set $filemanager thunar
 
-# Default family (fontconfig "monospace" → Noto Sans Mono). No Nerd Font —
-# the power menu uses plain words now. Size kept as before.
-font pango:monospace 11
+# Font: Terminus (see kitty.conf for the whole story). pango can't resolve a
+# bare `monospace` to it, so it's named explicitly; 13pt ≈ what 11pt of the old
+# fontconfig monospace (Noto Sans Mono) looked like.
+font pango:Terminess Nerd Font Mono 13
 
 # ── Behaviour ───────────────────────────────────────────
 floating_modifier $mod
@@ -216,7 +217,10 @@ bindsym $mod+Shift+e exec i3-msg exit
 bar {
     status_command i3status
     position bottom
-    font pango:monospace 11
+    # Bold here on purpose (2026-09-29): Terminus Regular's stems are a single
+    # pixel, which reads as thin at bar text sizes. The WM's global font above
+    # stays Regular, and so do the terminal, Thunar and rofi.
+    font pango:Terminess Nerd Font Mono Bold 13
     workspace_buttons yes
     strip_workspace_numbers no
     binding_mode_indicator yes
