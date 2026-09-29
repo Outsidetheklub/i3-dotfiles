@@ -1,0 +1,14 @@
+# Machine-local i3 files — created/edited per box, not stowed.
+# Listed here so `stow i3` (and install.sh) can't abort on them: one conflict
+# aborts the WHOLE stow run, and install.sh runs with `set -eu`, so the script
+# would die here (seen on the desktop 2026-09-29).
+#
+# NOTE: the repo still tracks i3/.config/i3/{local.conf,display.sh} from the era
+# when machine-specific files lived in the package. They are leftovers — the
+# templates live in examples/ — and they are what caused the conflict above.
+# Removing them from git (git rm) is the proper cleanup; this ignore file is the
+# safety net until that happens.
+\.config/i3/local\.conf$
+\.config/i3/display\.sh$
+\.config/i3/machine\.env$
+\.stow-local-ignore$

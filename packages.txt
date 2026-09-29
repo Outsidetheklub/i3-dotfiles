@@ -24,6 +24,13 @@ stow
 adw-gtk-theme
 breeze-cursors
 
+# Icons: gtk/.config/gtk-*/settings.ini asks for Papirus-Dark. Stock Papirus
+# folders are blue, and the black-and-white look needs them white — that recolour
+# is NOT a config file (it rewrites /usr/share/icons/Papirus-Dark), so install.sh
+# runs `papirus-folders -C white --theme Papirus-Dark` to redo it on a new box.
+# papirus-folders itself is AUR: see the note at the bottom.
+papirus-icon-theme
+
 # python — only used by local-bin/mono-cursor (stdlib only), which rebuilds the
 # Breeze cursor set in monochrome and activates it. install.sh runs it at the end.
 python
@@ -73,6 +80,9 @@ lightdm-gtk-greeter
 #   zen-browser-bin (AUR) - the default browser ($mod+b). Bootstrap an AUR helper
 #   with `base-devel git` + paru/yay — the README has a 3-line recipe. On
 #   CachyOS repos it's mirrored, so there `sudo pacman -S zen-browser-bin` works.
+#   papirus-folders-git (AUR) - recolours Papirus folders (the white folders the
+#   GTK icon theme depends on). install.sh uses it if present; without it you
+#   get blue folders. On CachyOS it's mirrored too.
 #
 # In the official repos, but only useful with the Spotify bind ($mod+m):
 spotify-launcher

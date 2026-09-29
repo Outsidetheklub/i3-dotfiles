@@ -26,7 +26,7 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `system-files/lightdm/50-i3.conf` | `/etc/lightdm/lightdm.conf.d/` | LightDM seat: i3 session + GTK greeter (needs root) |
 | `system-files/install-system.sh` | — | all of the above in one `sudo bash`, plus it enables NetworkManager/Bluetooth and enables LightDM (idempotent, backs up) |
 | `examples/local.conf` | `~/.config/i3/local.conf` | template for machine-specific i3 config |
-| `examples/display.sh` | `~/.config/i3/display.sh` | template for machine-specific xrandr setup |
+| `examples/display.sh` | `~/.config/i3/display.sh` | template for machine-specific xrandr setup (`examples/display-laptop-7490.sh` is the 7490's known-good version) |
 | `examples/lightdm-display-setup.sh` | `/usr/local/bin/` | template: pin the greeter's monitor + refresh rate (needs root) |
 | `examples/machine.env` | `~/.config/i3/machine.env` | template: night-light location, interfaces, screenshot dir (everything machine-specific) |
 | `examples/bookmarks` | `~/.config/gtk-3.0/bookmarks` | template: file-dialog sidebar shortcuts (personal, so never tracked) |
@@ -67,6 +67,26 @@ before i3 starts, so `i3-msg restart` isn't enough).
 ⚠️ **Don't "fix" the size to 32.** Breeze declares its sizes at 3/4 of the real
 pixel size, so `XCURSOR_SIZE=24` renders a 32px cursor and 32 would give 40px.
 
+### Icon theme
+
+`gtk/.config/gtk-{3.0,4.0}/settings.ini` name **Papirus-Dark** (Adwaita's
+blue folder icons were the last colour left in GTK). One wrinkle: Papirus ships
+its folders *blue*, and the white-on-black desktop wants them white — so the
+folder colour is set with `papirus-folders`, which **rewrites
+`/usr/share/icons/Papirus-Dark`** rather than reading a config file:
+
+```sh
+sudo papirus-folders -C white --theme Papirus-Dark   # papirus-folders-git (AUR)
+papirus-folders -l                                   # all available colours
+```
+
+Because that's system state and not a dotfile, `install.sh` re-applies it on a
+new box (it tries `sudo -n` first so an unattended run can't hang on a password
+prompt — otherwise it prints the command). Re-run it after a Papirus update,
+which restores the packaged files. Note the flip side, and the reason the
+selection is a *white block*: Papirus-Dark icons are light by design, so they
+disappear on the selected row — that's expected, not a bug.
+
 ## Prerequisites
 
 A base Arch install — that's all. Nothing graphical is assumed: the package list
@@ -80,9 +100,10 @@ ones a package list can't give you, because they're machine-specific:
 | GPU driver | **NVIDIA:** `nvidia-open-dkms nvidia-utils lib32-nvidia-utils` — the *open* kernel modules (Turing and newer; required for Blackwell/RTX 50). `nvidia-container-toolkit` too if you use davincibox. **AMD/Intel:** `mesa` + the usual. `/etc/X11/xorg.conf.d/10-nvidia.conf` is per-machine and not tracked |
 | Audio | `pipewire pipewire-pulse pipewire-alsa wireplumber` — in `packages.txt`; `pipewire-alsa` is what gives ALSA-only apps (DaVinci Resolve) sound |
 | Keyboard layout | machine-specific: `localectl set-x11-keymap <layout> [model]` — writes `/etc/X11/xorg.conf.d/00-keyboard.conf`, so this repo never needs a `setxkbmap` line |
-| AUR helper | only for the browser: `base-devel git` + an AUR helper (paru/yay) for `zen-browser-bin` — 3-line recipe below. Everything else in `packages.txt` is in the official repos, `spotify-launcher` included |
+| AUR helper | only for two things: the browser (`zen-browser-bin`) and the folder recolour (`papirus-folders-git`) — `base-devel git` + an AUR helper (paru/yay), 3-line recipe below |
 | Fonts | `noto-fonts` for the bar/terminal (`monospace`) and `ttf-firacode-nerd` for GTK apps — both in `packages.txt` |
 | Cursor theme | nothing to do — `install.sh` builds the monochrome Breeze set itself. `breeze-cursors` (the source theme) + `python` are in `packages.txt` for that |
+| Icons | `papirus-icon-theme` (official) + `papirus-folders-git` (AUR) are in `packages.txt`; `install.sh` recolours the folders white, because that rewrites `/usr/share/icons` instead of reading a config file |
 | In a VM | no NVIDIA driver; use `mesa` + the VM's video driver (`qxl` or virtio-gpu) and, for QEMU/SPICE, `spice-vdagent`. Monitor names differ too — the VM X output is usually `Virtual-1`, so edit `local.conf` |
 
 Everything the repo itself needs is in `packages.txt`:
@@ -122,7 +143,8 @@ What `install.sh` does and doesn't do — this is the bit that trips people up:
 
 - **Does:** symlink all ~15 packages into `$HOME` with GNU Stow, then build +
   activate the monochrome cursor theme (`mono-cursor`; skipped with a note if
-  `python`/`breeze-cursors` are missing).
+  `python`/`breeze-cursors` are missing) and recolour the Papirus folders white
+  (`papirus-folders`; prints the command instead if it can't get root).
 - **Doesn't:** install packages, create users, or touch `/etc`. It bails out if
   `stow` isn't installed yet. The root-side files live in `system-files/` and
   have their own script (see step 4).
@@ -179,11 +201,12 @@ $EDITOR ~/.config/i3/local.conf ~/.config/i3/display.sh ~/.config/i3/machine.env
 
 Packages: `packages.txt` (`sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')`).
 
-### Optional: the one AUR package (the browser)
+### Optional: the AUR packages (the browser + the folder recolour)
 
 `packages.txt` covers everything that lives in the official repos, including
-`spotify-launcher`. The only AUR package this setup wants is the browser
-(`$mod+b`), and installing it needs an AUR helper — bootstrap one like this:
+`spotify-launcher` and `papirus-icon-theme`. Two packages are AUR — the browser
+(`$mod+b`) and `papirus-folders-git` (the white folders, see "Icon theme"
+above) — and installing those needs an AUR helper; bootstrap one like this:
 
 ```sh
 sudo pacman -S --needed base-devel git          # build tools
@@ -191,14 +214,16 @@ sudo pacman -S --needed base-devel git          # build tools
 git clone https://aur.archlinux.org/paru.git /tmp/paru
 cd /tmp/paru && makepkg -si                     # no sudo: makepkg refuses to run as root
 
-paru -S zen-browser-bin                         # the browser
+paru -S zen-browser-bin papirus-folders-git        # browser + folder recolour
 ```
 
-`yay` works identically — swap the clone URL and the rest is the same. Skip all of
-this if you don't want the browser: nothing else here needs an AUR helper.
+`yay` works identically — swap the clone URL and the rest is the same. Skip the
+browser if you don't want it; skip `papirus-folders-git` only if you're happy
+with blue folders.
 
 > On CachyOS repos both `paru` and `zen-browser-bin` are mirrored, so there it's
-> just `sudo pacman -S paru zen-browser-bin`.
+> just `sudo pacman -S paru zen-browser-bin` (`papirus-folders-git` is mirrored
+> too — `paru -S papirus-folders-git` works without building).
 
 ## Machine-specific config
 
@@ -216,6 +241,9 @@ neither i3 nor X enables extra outputs, so without it a second monitor stays
 black no matter what the i3 config says.
 
 Find the names first: `xrandr --query | grep ' connected'`.
+
+On the Latitude 7490 the output names are already solved — copy
+`examples/display-laptop-7490.sh` (its known-good version).
 
 ### Everything else machine-specific: `machine.env`
 
@@ -243,7 +271,9 @@ sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')   # + AUR: ze
 # then deploy everything:
 ./install.sh
 sudo bash system-files/install-system.sh
-cp examples/local.conf ~/.config/i3/local.conf && cp examples/display.sh ~/.config/i3/display.sh
+cp examples/local.conf ~/.config/i3/local.conf
+cp examples/display.sh ~/.config/i3/display.sh
+# ...or, on the Latitude 7490, its known-good version: examples/display-laptop-7490.sh
 cp examples/machine.env ~/.config/i3/machine.env
 chmod +x ~/.config/i3/display.sh
 # edit all three for this machine's outputs, then log out and pick i3 in LightDM

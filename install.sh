@@ -38,6 +38,21 @@ if command -v python3 >/dev/null 2>&1 && [ -d /usr/share/icons/Breeze_Light ]; t
 else
     echo "==> skipping mono-cursor: needs 'python' + 'breeze-cursors' (see packages.txt)"
 fi
+
+# Icon theme. gtk/.config/gtk-*/settings.ini names Papirus-Dark, but stock
+# Papirus folders are blue - the black-and-white look needs them white, and that
+# recolour rewrites /usr/share/icons/Papirus-Dark, so it cannot be a tracked
+# config file. Redo it here instead (AUR package papirus-folders-git, see
+# packages.txt). `sudo -n` so a run without a cached/NOPASSWD sudo entry can't
+# block on a password prompt — it just prints the command to run by hand.
+if command -v papirus-folders >/dev/null 2>&1; then
+    echo "==> papirus-folders (white folders on Papirus-Dark)"
+    if ! sudo -n papirus-folders -C white --theme Papirus-Dark 2>/dev/null; then
+        echo "   !! needs root - run: sudo papirus-folders -C white --theme Papirus-Dark" >&2
+    fi
+else
+    echo "==> skipping papirus-folders: needs 'papirus-icon-theme' + 'papirus-folders-git' (see packages.txt)"
+fi
 echo
 # Root-owned files are not stowed (they live outside $HOME).
 echo "Done. Remaining manual steps:"
@@ -60,3 +75,5 @@ echo "  5) make sure the packages in packages.txt are installed"
 echo "       sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')"
 echo "  6) sanity check:  i3 -C -c ~/.config/i3/config"
 echo "  7) log out and pick i3 in LightDM"
+echo "     icons: if install.sh couldn't recolour them, run"
+echo "       sudo papirus-folders -C white --theme Papirus-Dark   # Papirus folders, white"

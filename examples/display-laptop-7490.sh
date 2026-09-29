@@ -1,6 +1,8 @@
 #!/bin/sh
-# Machine-specific display setup — Dell Latitude 7490 (Intel i915), i3/X11.
-# NOT tracked in the repo (machine-local).
+# Display setup for the Dell Latitude 7490 laptop (Intel i915), i3/X11.
+# This is the 7490's KNOWN-GOOD version, kept as reference: copy it to
+# ~/.config/i3/display.sh (and chmod +x) when setting the laptop up.
+# `examples/display.sh` is the generic template (desktop example inside).
 #
 # Why this file exists: i3 (and X itself) never enable extra outputs. Without an
 # xrandr call here, a second monitor stays black no matter what the i3 config says.
