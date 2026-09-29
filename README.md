@@ -64,9 +64,23 @@ rewrites never make it into that list; tried both `target="pattern"` and
 `target="font"` on 2026-09-29, no dice). Re-run `terminus-bold` after updating
 Terminus; `install.sh` does it for you.
 
-The source is currently the nerd-fonts `Terminus.zip` installed per-user into
-`~/.local/share/fonts/terminess/` (family `Terminess Nerd Font Mono`); the
-`ttf-terminus-nerd` package is the same family if you'd rather have it managed.
+The font itself comes from `ttf-terminus-nerd` (family
+`Terminess Nerd Font Mono`); `terminus-bold` writes the generated Bold family to
+`~/.local/share/fonts/terminess/` — the only per-user font file in the setup.
+
+⚠️ **The browser's font settings are per-profile and not tracked by the repo**, so
+on a second machine set them by hand: Zen → Settings → font, or drop this in
+`~/.config/zen/<profile>/user.js` (it re-applies at every start):
+
+```js
+user_pref("font.name.sans-serif.x-western", "Terminess Bold Mono");
+user_pref("font.name.serif.x-western",      "Terminess Bold Mono");
+user_pref("font.name.monospace.x-western",  "Terminess Bold Mono");
+user_pref("theme.custom_uifont.custom",     "Terminess Bold Mono");
+```
+
+Sanity check the family is visible to apps (`fc-match` is not enough — it resolves
+aliases a browser will ignore): `fc-list :family="Terminess Bold Mono"`.
 
 ### Cursor theme
 
