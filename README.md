@@ -41,6 +41,33 @@ repo while the i3 config lived in another.
 **Also in here:** `gtk/`, `fish/`, `starship/`, `fastfetch/`,
 `redshift/`, `kitty/`.
 
+### Fonts
+
+The desktop is **Terminus** (`font_family` in `kitty/`, `font pango:…` in
+`i3/`, `font:` in `rofi/`, `gtk-font-name` in `gtk/`, `font-family` in
+`gtk/.config/gtk-3.0/thunar.css`). It renders smaller than Noto/FiraCode at
+equal pt, so every size here is ~2pt larger than the font it replaced.
+
+⚠️ Terminus Regular's stems are exactly **1px** — crisp at Thunar's 12pt, thin
+at browser text sizes. So two places ask for the Bold face instead: the **i3bar**
+(`font pango:Terminess Nerd Font Mono Bold 13`, since pango understands style
+keywords) and the **browser**, whose four font prefs point at
+**"Terminess Bold Mono"**.
+
+That name is real, but *generated*: `local-bin/.local/bin/terminus-bold` writes a
+renamed copy of the Bold TTF (`TerminessBoldMono-Regular.ttf`, family
+"Terminess Bold Mono", style Regular — same glyphs, new name table). ⚠️ It has to
+be a real font: Firefox resolves a requested family against fontconfig's **list of
+installed families**, so the obvious shortcut — an alias in
+`~/.config/fontconfig/fonts.conf` — is silently ignored by the browser (pattern
+rewrites never make it into that list; tried both `target="pattern"` and
+`target="font"` on 2026-09-29, no dice). Re-run `terminus-bold` after updating
+Terminus; `install.sh` does it for you.
+
+The source is currently the nerd-fonts `Terminus.zip` installed per-user into
+`~/.local/share/fonts/terminess/` (family `Terminess Nerd Font Mono`); the
+`ttf-terminus-nerd` package is the same family if you'd rather have it managed.
+
 ### Cursor theme
 
 One thing in this setup *is* themed, because the alternative is worse: the cursor.

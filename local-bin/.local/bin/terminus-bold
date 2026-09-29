@@ -1,0 +1,86 @@
+#!/bin/sh
+# terminus-bold — expose Terminus's Bold face as its own family name.
+#
+# WHY: Terminus Regular has 1px stems. That's perfect in Thunar at 12pt, but thin
+# at the sizes a browser renders text, so the browser wants the Bold face. A
+# browser (Firefox/Zen) resolves a requested family against fontconfig's *list of
+# installed families* — an alias in fonts.conf is invisible to it (tried it
+# 2026-09-29; the browser ignored the name and kept the Regular face). So the Bold
+# TTF gets a copy with a renamed family, which puts it in that list:
+#
+#     TerminessNerdFontMono-Bold.ttf  ->  family "Terminess Bold Mono"
+#                                         style  "Regular"
+#
+# The glyphs are untouched — only the name table is rewritten. Style is forced to
+# Regular on purpose, so the family has exactly one face: anything asking for
+# "Terminess Bold Mono" gets bold pixels, with no weight juggling.
+#
+# It is generated rather than shipped because it's a 2.7 MB binary; the source is
+# the nerd-fonts Terminus build, i.e. the `ttf-terminus-nerd` package (or
+# Terminus.zip from the nerd-fonts releases, installed per-user).
+#
+# Usage:  terminus-bold          (idempotent; re-run after updating Terminus)
+# Needs:  uv (runs fontTools in a throwaway env; first run downloads it)
+set -eu
+
+OUT_DIR="${TERMINUS_OUT_DIR:-$HOME/.local/share/fonts/terminess}"
+DST="$OUT_DIR/TerminessBoldMono-Regular.ttf"
+FAMILY="Terminess Bold Mono"
+PSNAME="TerminessBoldMono-Regular"
+
+# Find the Bold face wherever Terminus lives: the package puts it in
+# /usr/share/fonts, a per-user install in ~/.local/share/fonts.
+SRC=""
+if command -v fc-match >/dev/null 2>&1; then
+    candidate=$(fc-match -f '%{file}' 'Terminess Nerd Font Mono:weight=bold' 2>/dev/null || true)
+    case "$candidate" in
+        *TerminessNerdFontMono-Bold.ttf) SRC="$candidate" ;;
+    esac
+fi
+if [ -z "$SRC" ]; then
+    for candidate in "$HOME/.local/share/fonts/terminess/TerminessNerdFontMono-Bold.ttf" \
+                     /usr/share/fonts/terminus-nerd/TerminessNerdFontMono-Bold.ttf; do
+        [ -f "$candidate" ] && { SRC="$candidate"; break; }
+    done
+fi
+
+if [ -z "$SRC" ] || [ ! -f "$SRC" ]; then
+    echo "terminus-bold: can't find TerminessNerdFontMono-Bold.ttf — install ttf-terminus-nerd (packages.txt)" >&2
+    exit 1
+fi
+if ! command -v uv >/dev/null 2>&1; then
+    echo "terminus-bold: needs uv (it fetches fontTools); see packages.txt" >&2
+    exit 1
+fi
+mkdir -p "$OUT_DIR"
+
+SRC="$SRC" DST="$DST" FAMILY="$FAMILY" PSNAME="$PSNAME" \
+uv run --with fonttools python - <<'PY'
+import os
+from fontTools.ttLib import TTFont
+
+src, dst = os.environ["SRC"], os.environ["DST"]
+fam, ps = os.environ["FAMILY"], os.environ["PSNAME"]
+
+font = TTFont(src)
+name = font["name"]
+values = {1: fam, 2: "Regular", 3: f"{fam}; generated", 4: fam, 6: ps, 16: fam, 17: "Regular"}
+for nid, value in values.items():
+    for rec in list(name.names):
+        if rec.nameID == nid:
+            name.setName(value, nid, rec.platformID, rec.platEncID, rec.langID)
+    if not name.getDebugName(nid):            # 16/17 are often absent
+        name.setName(value, nid, 3, 1, 0x409)
+font.save(dst)
+print(f"terminus-bold: wrote {dst} (family '{fam}', style Regular)")
+PY
+
+command -v fc-cache >/dev/null 2>&1 && fc-cache -f >/dev/null 2>&1 || true
+if command -v fc-list >/dev/null 2>&1; then
+    if fc-list :family="$FAMILY" | grep -q .; then
+        echo "terminus-bold: '$FAMILY' is now a listed family"
+    else
+        echo "terminus-bold: !! '$FAMILY' still not listed — check $DST" >&2
+        exit 1
+    fi
+fi

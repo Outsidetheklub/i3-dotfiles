@@ -53,6 +53,18 @@ if command -v papirus-folders >/dev/null 2>&1; then
 else
     echo "==> skipping papirus-folders: needs 'papirus-icon-theme' + 'papirus-folders-git' (see packages.txt)"
 fi
+
+# Terminus Bold under its own family name (local-bin/terminus-bold). The browser's
+# font settings ask for "Terminess Bold Mono": Firefox resolves a family against
+# the list of installed families, so a fontconfig alias is invisible to it — the
+# Bold TTF gets a renamed copy instead. Needs uv (fetches fontTools) + Terminus.
+if [ -x "$HOME/.local/bin/terminus-bold" ]; then
+    echo "==> terminus-bold (Terminus Bold as its own family)"
+    "$HOME/.local/bin/terminus-bold" || \
+        echo "   !! terminus-bold failed - the browser falls back to Regular Terminus" >&2
+else
+    echo "==> skipping terminus-bold: not stowed yet"
+fi
 echo
 # Root-owned files are not stowed (they live outside $HOME).
 echo "Done. Remaining manual steps:"
