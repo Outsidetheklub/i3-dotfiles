@@ -1,65 +1,71 @@
+// fastfetch — stock layout, no logo, no IPs, no colour.  (2026-09-29)
+//
+// This is fastfetch's own default module list, minus Local IP, with every colour
+// swapped for the desktop's two greys: keys in #9a9a9a, values white. No logo, so
+// it reads like command output rather than a "fetch" picture.
+//
+// Why: this box is meant to look like a stock i3 install that happens to be
+// monochrome (the terminal/Thunar theme). Colour lives in one attribute per
+// surface, if at all — see gtk/.config/gtk-3.0/thunar.css and the i3 bar.
+//
+// Notes:
+//   * Modules that report nothing (DE, WM Theme, Battery on a desktop) drop out
+//     on their own — that's why the list is longer than the output.
+//   * "Local IP" was deliberately removed. Nothing here needs to know your
+//     address, and fastfetch would otherwise print it every time you open a
+//     terminal.
+//   * Also cut on his request (2026-09-29): Host (the board name), Display (both
+//     monitors) and Locale, and the hostname dropped from the title line (it's just
+//     the username now). What's left is hardware/software facts only.
+//   * Keys are dimmed per module via $1/$2/$3 constants, because fastfetch has no
+//     global "key colour" setting. Display/Disk keep their default keys (they
+//     include the output/mountpoint name).
+//   * `brightColor: false` keeps fastfetch from tinting keys and the title.
 {
     "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
     "logo": null,
     "display": {
-        "separator": "  ",
+        "separator": " ",
         "color": "white",
-        "constants": ["\u001b[37m", "\u001b[38;2;179;200;231m", "\u001b[38;2;191;199;212m", "\u001b[38;2;223;187;220m"]
+        "brightColor": false,
+        // Percentages: fastfetch paints these by usage (green / yellow / red) when
+        // stdout is a *terminal* — that's the only colour it adds on its own, and
+        // the reason it looks colourless when you pipe it to a file. All three
+        // states are pinned to the same white as the rest of the value.
+        // (Thanks to that quirk: verify with a PTY, e.g.
+        //  `script -qec 'fastfetch' /dev/null | cat -v` — a plain redirect
+        //  hides the colours and will fool you.)
+        "percent": {
+            "color": {
+                "green":  "#ffffff",
+                "yellow": "#ffffff",
+                "red":    "#ffffff"
+            }
+        },
+        "constants": ["\u001b[0m", "\u001b[38;2;255;255;255m", "\u001b[38;2;154;154;154m"]
     },
     "modules": [
-        "break",
         {
-            "type": "custom",
-            "key": "╭───────────────────────────────────╮"
+            "type": "title",
+            "format": "{$2}{user-name}{$1}"
         },
-        {
-            "type": "kernel",
-            "key": "│ {$2}{$1}  kernel",
-            "format": "{$2}{release>22}{$1} │"
-        },
-        {
-            "type": "command",
-            "key": "│   uptime",
-            "text": "uptime -p | cut -d ' ' -f 2-",
-            "format": "{>22} │"
-        },
-        {
-            "type": "shell",
-            "key": "│ {$2}{$1}  shell ",
-            "format": "{$2}{pretty-name>22}{$1} │"
-        },
-        {
-            "type": "command",
-            "key": "│ {$3}{$1}  mem   ",
-            "text": "free -m | awk 'NR==2{printf \"%.2f GiB / %.2f GiB\",$3/1024,$2/1024}'",
-            "format": "{$3}{>22}{$1} │"
-        },
-        {
-            "type": "packages",
-            "key": "│   pkgs  ",
-            "format": "{all>22} │"
-        },
-        {
-            "type": "command",
-            "key": "│ {$2}{$1}  user  ",
-            "text": "echo $USER",
-            "format": "{$2}{>22}{$1} │"
-        },
-        {
-            "type": "command",
-            "key": "│   hname ",
-            "text": "hostnamectl hostname",
-            "format": "{>22} │"
-        },
-        {
-            "type": "os",
-            "key": "│ {$4}󰻀{$1}  distro",
-            "format": "{$4}{pretty-name>22}{$1} │"
-        },
-        {
-            "type": "custom",
-            "key": "╰───────────────────────────────────╯"
-        },
-        "break"
+        { "type": "os",           "key": "{$3}OS{$1}" },
+        { "type": "kernel",       "key": "{$3}Kernel{$1}" },
+        { "type": "uptime",       "key": "{$3}Uptime{$1}" },
+        { "type": "packages",     "key": "{$3}Packages{$1}" },
+        { "type": "shell",        "key": "{$3}Shell{$1}" },
+        { "type": "de",           "key": "{$3}DE{$1}" },
+        { "type": "wm",           "key": "{$3}WM{$1}" },
+        { "type": "wmtheme",      "key": "{$3}WM Theme{$1}" },
+        { "type": "theme",        "key": "{$3}Theme{$1}" },
+        { "type": "icons",        "key": "{$3}Icons{$1}" },
+        { "type": "terminal",     "key": "{$3}Terminal{$1}" },
+        { "type": "terminalfont", "key": "{$3}Terminal Font{$1}" },
+        { "type": "cpu",          "key": "{$3}CPU{$1}" },
+        { "type": "gpu",          "key": "{$3}GPU{$1}" },
+        { "type": "memory",       "key": "{$3}Memory{$1}" },
+        { "type": "swap",         "key": "{$3}Swap{$1}" },
+        { "type": "disk" },
+        { "type": "battery",      "key": "{$3}Battery{$1}" }
     ]
 }
