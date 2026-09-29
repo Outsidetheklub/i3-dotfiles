@@ -2,12 +2,13 @@
    Thunar theme — boring black & white
    Pure black background (#000000), pure white text (#ffffff), no colour accents.
 
-   Rewritten 2026-09-24. NOTE: the named GTK3 theme (adw-gtk3-dark) is NOT
-   installed on this machine, so GTK3 falls back to *light* Adwaita, whose CSS
-   hardcodes literal light colours (toolbar #f6f5f4, buttons, view #ffffff...).
-   @define-color overrides in gtk.css are therefore ignored by GTK3. That is why
-   this file explicitly sets every surface instead of relying on theme colours.
-   Scoped to .thunar (menu/menuitem rules are global — see note at the bottom).
+   Rewritten 2026-09-24. NOTE (corrected 2026-09-29): adw-gtk3-dark *is*
+   installed (/usr/share/themes, package adw-gtk-theme) and IS the GTK3 theme
+   here. The earlier note claiming it was missing was wrong. The real reason
+   @define-color from gtk.css can't be relied on for GTK3 apps is that
+   adw-gtk3-dark defines those same symbols itself; so this file keeps setting
+   every surface explicitly. Scoped to .thunar (menu/menuitem rules are global
+   — see note at the bottom).
    ============================================================================= */
 
 /* =============================================================================
@@ -148,11 +149,15 @@
     background-color: transparent;
 }
 
-/* Selection — white text on a subtle white wash (must follow the rules above) */
+/* Selection — inverted block (white bar, black text). TERMINAL PASS 2026-09-29:
+ * was alpha(#ffffff,.20) + white text; inverted reads like a TUI selection.
+ * NOTE: this rule's specificity (.thunar .frame.standard-view .view:selected = 41)
+ * is what beats adw-gtk3's own treeview.view:selected — if you add a competing
+ * rule somewhere else in this file, match these selectors or it will lose. */
 .thunar .frame.standard-view .view:selected,
 .thunar .frame.standard-view .view *:selected {
-    color: #ffffff;
-    background-color: alpha(#ffffff, 0.20);
+    color: #000000;
+    background-color: #ffffff;
 }
 
 .thunar .rubberband {
@@ -209,8 +214,14 @@
 }
 
 .thunar .sidebar .view:selected {
-    background: alpha(#ffffff, 0.20);
-    color: #ffffff;
+    background: #ffffff;
+    color: #000000;
+}
+
+/* Non-selected sidebar entries are dim; hover just brightens the text.
+ * (Terminal pass: the sidebar should read as a quiet tree, not a GUI list.) */
+.thunar .sidebar .view {
+    color: #9a9a9a;
 }
 
 /* =============================================================================
@@ -327,4 +338,224 @@ menu separator {
     to {
         opacity: 1;
     }
+}
+
+
+/* =============================================================================
+   TERMINAL PASS — make it read like a TUI file manager (yazi/ranger vibe)
+   (added 2026-09-29)
+
+   What a GtkTreeView actually lets us touch, and what it doesn't:
+     * CAN: colours, selection style, chrome geometry/separators, font family
+       (cell renderers inherit the widget's style font when they don't set their
+       own), and the *scaling* of rows, because row height comes from the font
+       (Thunar's cell renderers have no per-cell padding knob exposed to CSS).
+     * CANNOT: per-column dimming, per-cell padding, or hiding the icon cell —
+       those are painted by GtkCellRenderer{Pixbuf,Text}, not CSS nodes.
+   So: density = font size. Selection = inverted block (the big terminal cue).
+   ============================================================================= */
+
+/* --- Terminal font --------------------------------------------------------
+ * Deliberately the SAME font the terminal itself uses: kitty.conf sets no
+ * font_family, so kitty renders the fontconfig default for "monospace"
+ * (Noto Sans Mono) at size 11. Asking for plain `monospace` here resolves to
+ * exactly that, so the file list reads like `ls` output in the terminal.
+ * Swap in "FiraCode Nerd Font" instead if you'd rather keep the Nerd Font
+ * (the only practical difference: nerd-font glyphs in filenames render here).
+ * NOTE: row height is NOT driven by the font — Thunar sizes rows from its
+ * 18px list icons, so the pitch stays 28px whatever the font does. */
+.thunar,
+.thunar * {
+    font-family: monospace;
+    font-size: 11pt;
+}
+
+/* --- Instant, no fades/slides (terminals don't animate) -------------------- */
+.thunar .frame.standard-view,
+.thunar .sidebar {
+    animation: none;
+    opacity: 1;
+    transition: none;
+}
+
+/* --- 1px rules instead of padding/margins: panes read as split regions ----- */
+.thunar .frame.standard-view {
+    border: 1px solid #333333;
+    padding: 3px;
+    margin: 4px 6px 0 0;
+    background-color: #000000;
+}
+.thunar .sidebar {
+    border-right: 1px solid #333333;
+    padding: 0 4px;
+    background: none;
+}
+
+/* --- Chrome: flat strips with a single hairline under them ----------------- */
+.thunar headerbar,
+.thunar .titlebar,
+.thunar menubar,
+.thunar .menubar,
+.thunar toolbar,
+.thunar .toolbar {
+    background-color: #000000;
+    background-image: none;
+    border-bottom: 1px solid #333333;
+    padding: 0;
+    min-height: 0;
+}
+.thunar headerbar:backdrop,
+.thunar .titlebar:backdrop,
+.thunar menubar:backdrop,
+.thunar .menubar:backdrop,
+.thunar toolbar:backdrop,
+.thunar .toolbar:backdrop {
+    background-color: #000000;
+    background-image: none;
+}
+
+/* Toolbar buttons: no fill, no hover box, no animation. */
+.thunar toolbar button,
+.thunar .toolbar button,
+.thunar headerbar button {
+    background: none;
+    background-image: none;
+    border: none;
+    box-shadow: none;
+    padding: 2px 4px;
+    margin: 0;
+    transition: none;
+}
+.thunar toolbar button:hover,
+.thunar headerbar button:hover {
+    background: alpha(#ffffff, 0.10);
+}
+.thunar toolbar button:checked,
+.thunar headerbar button:checked {
+    background: alpha(#ffffff, 0.20);
+    color: #ffffff;
+}
+
+/* --- Column headers: dim labels, hairline under, no button chrome ---------- */
+.thunar treeview.view header button {
+    background: none;
+    background-image: none;
+    border: none;
+    box-shadow: none;
+    color: #9a9a9a;
+    padding: 0 6px;
+    min-height: 0;
+    font-weight: normal;
+    transition: none;
+}
+.thunar treeview.view header button:hover {
+    background: none;
+    color: #ffffff;
+}
+.thunar treeview.view header {
+    background-color: #000000;
+    border-bottom: 1px solid #333333;
+}
+
+/* --- Selection: inverted block (white bar, black text) ---------------------
+ * Implemented in the "Sidebar Navigation" and "Main view frame" sections above —
+ * those selectors have the specificity to beat adw-gtk3. Duplicating the rule
+ * here at lower specificity would silently lose, which is exactly what happened
+ * on the first attempt (2026-09-29). Kept as a marker only. */
+
+/* --- Sidebar: dim, tight, hairline separators ------------------------------ */
+.thunar .sidebar .view {
+    padding: 0 4px;
+    color: #9a9a9a;
+    min-height: 0;
+}
+.thunar .sidebar .view:hover {
+    background: none;
+    color: #ffffff;
+    box-shadow: inset 2px 0 0 0 #ffffff;
+}
+.thunar .sidebar .view:selected {
+    background-color: #ffffff;
+    color: #000000;
+    box-shadow: none;
+}
+
+/* --- Statusbar: reverse video, like a TUI status line ---------------------- */
+.thunar statusbar {
+    background-color: #ffffff;
+    background-image: none;
+    color: #000000;
+    padding: 1px 8px;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+}
+.thunar statusbar label,
+.thunar statusbar box {
+    color: #000000;
+}
+
+/* --- Tabs: [text] chips, dim until active --------------------------------- */
+.thunar header.top {
+    padding: 0 6px;
+    margin: 0;
+}
+.thunar header.top tabs .reorderable-page {
+    margin: 0;
+    padding: 2px 8px;
+    color: #9a9a9a;
+    background: none;
+    border: none;
+    border-right: 1px solid #333333;
+    transition: none;
+}
+.thunar header.top tabs .reorderable-page:hover {
+    background: none;
+    color: #ffffff;
+}
+.thunar header.top tabs .reorderable-page:checked {
+    background-color: #ffffff;
+    color: #000000;
+}
+
+/* --- Scrollbars: thin, flat, terminal-ish --------------------------------- */
+.thunar scrollbar,
+.thunar scrollbar trough {
+    background-color: #000000;
+    border: none;
+}
+.thunar scrollbar slider {
+    background-color: #333333;
+    border: none;
+    border-radius: 0;
+    min-width: 6px;
+    min-height: 6px;
+}
+.thunar scrollbar slider:hover {
+    background-color: #4d4d4d;
+}
+
+/* --- Path bar / location buttons: flat text buttons ----------------------- */
+.thunar .path-bar-button,
+.thunar .location-button {
+    background: none;
+    background-image: none;
+    border: none;
+    box-shadow: none;
+    padding: 2px 6px;
+    margin: 0;
+    color: #9a9a9a;
+    transition: none;
+}
+.thunar .path-bar-button:hover,
+.thunar .location-button:hover {
+    background: alpha(#ffffff, 0.10);
+    color: #ffffff;
+}
+.thunar .location-button.toggle:checked,
+.thunar .path-bar-button.toggle:checked {
+    background-color: #ffffff;
+    color: #000000;
+    padding: 2px 6px;
+    box-shadow: none;
 }

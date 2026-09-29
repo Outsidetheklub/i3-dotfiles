@@ -25,8 +25,8 @@
 @define-color sidebar_border_color #262626;
 @define-color sidebar_backdrop_color @window_bg_color;
 
-@define-color theme_selected_bg_color @accent_bg_color;
-@define-color theme_selected_fg_color @accent_fg_color;
+@define-color theme_selected_bg_color #ffffff;
+@define-color theme_selected_fg_color #000000;
 
 /* --- the rest of the palette (ex-noctalia.css), greyscale --- */
 @define-color destructive_bg_color #333333;

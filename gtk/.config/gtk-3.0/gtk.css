@@ -34,8 +34,13 @@
 @define-color sidebar_border_color #262626;
 @define-color sidebar_backdrop_color @window_bg_color;
 
-@define-color theme_selected_bg_color @accent_bg_color;
-@define-color theme_selected_fg_color @accent_fg_color;
+/* Selection = inverted block (white bar, black text) — TERMINAL PASS 2026-09-29.
+ * IMPORTANT: GtkTreeView (Thunar's file list) paints its selected row from
+ * @theme_selected_bg_color, NOT from a `.view:selected { background-color }`
+ * rule — a CSS rule there silently loses. Verified by setting it to #ff0000
+ * and watching the row turn red. Change the palette, not the rule. */
+@define-color theme_selected_bg_color #ffffff;
+@define-color theme_selected_fg_color #000000;
 
 /* --- classic GTK3 names (what plain Adwaita/GTK3 actually reads) --- */
 @define-color theme_bg_color #000000;
@@ -64,8 +69,8 @@
 @define-color theme_unfocused_text_color #9a9a9a;
 @define-color theme_unfocused_bg_color @window_bg_color;
 @define-color theme_unfocused_base_color @view_bg_color;
-@define-color theme_unfocused_selected_bg_color @accent_bg_color;
-@define-color theme_unfocused_selected_fg_color @accent_fg_color;
+@define-color theme_unfocused_selected_bg_color #ffffff;
+@define-color theme_unfocused_selected_fg_color #000000;
 
 /* --- Square everything: no rounded corners anywhere -------------------------
  * GTK's CSS parser rejects !important (it's a hard parse error — "Junk at end of
