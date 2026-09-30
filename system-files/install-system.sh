@@ -8,7 +8,7 @@
 # as <file>.bak-YYYY-MM-DD first. Nothing is deleted, nothing is uninstalled.
 #
 # It does NOT install packages — do that first:
-#     sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')
+#     grep -v '^#' packages.txt | xargs sudo pacman -S --needed
 
 set -eu
 [ "$(id -u)" -eq 0 ] || { echo "run me with sudo:  sudo bash $0" >&2; exit 1; }

@@ -150,7 +150,7 @@ ones a package list can't give you, because they're machine-specific:
 Everything the repo itself needs is in `packages.txt`:
 
 ```sh
-sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')
+grep -v '^#' packages.txt | xargs sudo pacman -S --needed
 ```
 
 ### Starting from the Arch ISO (archinstall)
@@ -197,7 +197,7 @@ The full order for a fresh machine:
 sudo pacman -S --needed git stow
 git clone git@github.com:Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
 cd ~/i3-dotfiles
-sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')   # + AUR: zen-browser-bin (see below)
+grep -v '^#' packages.txt | xargs sudo pacman -S --needed   # + AUR: zen-browser-bin (see below)
 
 # 2. user files
 ./install.sh
@@ -240,7 +240,7 @@ cp examples/machine.env ~/.config/i3/machine.env     # location, interfaces, scr
 $EDITOR ~/.config/i3/local.conf ~/.config/i3/display.sh ~/.config/i3/machine.env
 ```
 
-Packages: `packages.txt` (`sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')`).
+Packages: `packages.txt` (`grep -v '^#' packages.txt | xargs sudo pacman -S --needed`).
 
 ### Optional: the AUR packages (the browser + the folder recolour)
 
@@ -307,7 +307,7 @@ the script either auto-detects or stays quiet — so a stranger's clone behaves 
 sudo pacman -S --needed git stow
 git clone git@github.com:Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
 cd ~/i3-dotfiles
-sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')   # + AUR: zen-browser-bin (see below)
+grep -v '^#' packages.txt | xargs sudo pacman -S --needed   # + AUR: zen-browser-bin (see below)
 
 # then deploy everything:
 ./install.sh
@@ -361,7 +361,7 @@ Problems actually hit while installing this on real machines:
 
   ```sh
   sudo rm -f /var/lib/pacman/db.lck
-  sudo pacman -S --overwrite='*' $(grep -v '^#' packages.txt | tr '\n' ' ')
+  grep -v '^#' packages.txt | xargs sudo pacman -S --overwrite='*'
   ```
 
   (`--overwrite='*'` only replaces files these packages ship themselves — it's the

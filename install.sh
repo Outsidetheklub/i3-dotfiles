@@ -43,12 +43,18 @@ fi
 # Papirus folders are blue - the black-and-white look needs them white, and that
 # recolour rewrites /usr/share/icons/Papirus-Dark, so it cannot be a tracked
 # config file. Redo it here instead (AUR package papirus-folders-git, see
-# packages.txt). `sudo -n` so a run without a cached/NOPASSWD sudo entry can't
-# block on a password prompt — it just prints the command to run by hand.
+# packages.txt). This step genuinely needs root, so it uses plain `sudo` and
+# asks for your password. Do NOT use `sudo -n` here: with no cached credential
+# it fails silently and the folders just stay blue (the whole point of the
+# step). Already-white folders are skipped so re-runs don't prompt for nothing.
 if command -v papirus-folders >/dev/null 2>&1; then
-    echo "==> papirus-folders (white folders on Papirus-Dark)"
-    if ! sudo -n papirus-folders -C white --theme Papirus-Dark 2>/dev/null; then
-        echo "   !! needs root - run: sudo papirus-folders -C white --theme Papirus-Dark" >&2
+    if [ "$(papirus-folders -l 2>/dev/null | sed -n 's/^[[:space:]]*>[[:space:]]*//p')" = white ]; then
+        echo "==> papirus-folders: folders already white on Papirus-Dark"
+    else
+        echo "==> papirus-folders (white folders on Papirus-Dark) - root required"
+        if ! sudo papirus-folders -C white --theme Papirus-Dark; then
+            echo "   !! recolour failed or was cancelled - run later: sudo papirus-folders -C white --theme Papirus-Dark" >&2
+        fi
     fi
 else
     echo "==> skipping papirus-folders: needs 'papirus-icon-theme' + 'papirus-folders-git' (see packages.txt)"
@@ -84,7 +90,7 @@ echo "       cp examples/machine.env ~/.config/i3/machine.env    # location, int
 echo "       chmod +x ~/.config/i3/display.sh"
 echo "       -> then edit all three: xrandr --query | grep ' connected'"
 echo "  5) make sure the packages in packages.txt are installed"
-echo "       sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')"
+echo "       grep -v '^#' packages.txt | xargs sudo pacman -S --needed   # works in bash + fish"
 echo "  6) sanity check:  i3 -C -c ~/.config/i3/config"
 echo "  7) log out and pick i3 in LightDM"
 echo "     icons: if install.sh couldn't recolour them, run"

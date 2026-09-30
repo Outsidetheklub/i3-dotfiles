@@ -1,5 +1,5 @@
 # Packages this setup needs (Arch).
-# Install:  sudo pacman -S --needed $(grep -v '^#' packages.txt | tr '\n' ' ')
+# Install:  grep -v '^#' packages.txt | xargs sudo pacman -S --needed
 
 i3-wm
 i3status
