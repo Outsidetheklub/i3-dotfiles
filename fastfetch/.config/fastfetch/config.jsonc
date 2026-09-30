@@ -1,8 +1,14 @@
-// fastfetch — stock layout, no logo, no IPs, no colour.  (2026-09-29)
+// fastfetch — stock module list, monochrome: every colour slot pinned white.
 //
 // This is fastfetch's own default module list, minus Local IP, with every colour
-// swapped for the desktop's two greys: keys in #9a9a9a, values white. No logo, so
-// it reads like command output rather than a "fetch" picture.
+// set to white. The Arch logo is back on purpose (2026-09-30) — "how else is
+// EVERYONE supposed to know that I use arch btw?" — and `type: auto` picks the
+// Arch logo here, since fastfetch reports "Arch Linux". So it no longer reads like
+// bare command output, and that's the point.
+//
+// Keys and values are the same white: the 2026-09-29 version dimmed keys to
+// #9a9a9a through per-module $1/$2/$3 constants, and those are gone. The fixed
+// 12-char key column does the aligning instead.
 //
 // Why: this box is meant to look like a stock i3 install that happens to be
 // monochrome (the terminal/Thunar theme). Colour lives in one attribute per
@@ -17,55 +23,70 @@
 //   * Also cut on his request (2026-09-29): Host (the board name), Display (both
 //     monitors) and Locale, and the hostname dropped from the title line (it's just
 //     the username now). What's left is hardware/software facts only.
-//   * Keys are dimmed per module via $1/$2/$3 constants, because fastfetch has no
-//     global "key colour" setting. Display/Disk keep their default keys (they
-//     include the output/mountpoint name).
-//   * `brightColor: false` keeps fastfetch from tinting keys and the title.
+//   * `brightColor: true` with every colour explicitly set to white — fastfetch
+//     would otherwise tint keys and title on its own.
+//   * `percent.type: 1` is what keeps the percentages colourless: it draws a plain
+//     number (9 = coloured number, 10 = monochrome bar, 3 = bar + number). Pinning
+//     the green/yellow/red usage colours is the fragile way of doing the same job.
 {
     "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
-    "logo": null,
-    "display": {
-        "separator": " ",
-        "color": "white",
-        "brightColor": false,
-        // Percentages: fastfetch paints these by usage (green / yellow / red) when
-        // stdout is a *terminal* — that's the only colour it adds on its own, and
-        // the reason it looks colourless when you pipe it to a file. All three
-        // states are pinned to the same white as the rest of the value.
-        // (Thanks to that quirk: verify with a PTY, e.g.
-        //  `script -qec 'fastfetch' /dev/null | cat -v` — a plain redirect
-        //  hides the colours and will fool you.)
-        "percent": {
-            "color": {
-                "green":  "#ffffff",
-                "yellow": "#ffffff",
-                "red":    "#ffffff"
-            }
+
+    "logo": {
+        "type": "auto",
+        "color": {
+            "1": "white",
+            "2": "white",
+            "3": "white",
+            "4": "white",
+            "5": "white",
+            "6": "white",
+            "7": "white",
+            "8": "white",
+            "9": "white"
         },
-        "constants": ["\u001b[0m", "\u001b[38;2;255;255;255m", "\u001b[38;2;154;154;154m"]
+        "padding": {
+            "right": 4
+        }
     },
+
+	"display": {
+	    "separator": "  ",
+	
+	    "color": {
+	        "keys": "white",
+	        "title": "white",
+	        "output": "white",
+	        "separator": "white"
+	    },
+
+	    "brightColor": true,
+
+	    "key": {
+	        "width": 12,
+	        "type": "string"
+	    },
+
+	    "percent": {
+	        "type": 1
+	    }
+	},
+
     "modules": [
+        "title",
+        "separator",
+        "os",
+        "kernel",
+        "uptime",
+        "packages",
+        "shell",
+        "terminal",
         {
-            "type": "title",
-            "format": "{$2}{user-name}{$1}"
-        },
-        { "type": "os",           "key": "{$3}OS{$1}" },
-        { "type": "kernel",       "key": "{$3}Kernel{$1}" },
-        { "type": "uptime",       "key": "{$3}Uptime{$1}" },
-        { "type": "packages",     "key": "{$3}Packages{$1}" },
-        { "type": "shell",        "key": "{$3}Shell{$1}" },
-        { "type": "de",           "key": "{$3}DE{$1}" },
-        { "type": "wm",           "key": "{$3}WM{$1}" },
-        { "type": "wmtheme",      "key": "{$3}WM Theme{$1}" },
-        { "type": "theme",        "key": "{$3}Theme{$1}" },
-        { "type": "icons",        "key": "{$3}Icons{$1}" },
-        { "type": "terminal",     "key": "{$3}Terminal{$1}" },
-        { "type": "terminalfont", "key": "{$3}Terminal Font{$1}" },
-        { "type": "cpu",          "key": "{$3}CPU{$1}" },
-        { "type": "gpu",          "key": "{$3}GPU{$1}" },
-        { "type": "memory",       "key": "{$3}Memory{$1}" },
-        { "type": "swap",         "key": "{$3}Swap{$1}" },
-        { "type": "disk" },
-        { "type": "battery",      "key": "{$3}Battery{$1}" }
+    "type": "wm",
+    "key": "WM"
+},
+        "break",
+        "cpu",
+        "gpu",
+        "memory"
     ]
 }
