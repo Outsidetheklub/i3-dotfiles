@@ -38,6 +38,11 @@ xsetroot -solid "#000000"
 pgrep -f "[p]olkit-gnome-authentication-agent-1" >/dev/null 2>&1 || \
     /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &
 
+# Compositor — VSync only, no effects (see ~/.config/picom/picom.conf).
+# i3 has no compositor of its own, so without this, X11 windowed content tears.
+# Guarded so reloading i3 doesn't stack compositors.
+pgrep -x picom >/dev/null 2>&1 || picom &
+
 # Screenshots need no daemon any more: maim + slop + xclip, via
 # ~/.local/bin/screenshot.sh (bound to Print / $mod+Shift+s in the i3 config).
 # flameshot's login-time retry loop is gone with it — see 2026-09-26.

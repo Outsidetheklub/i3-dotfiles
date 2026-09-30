@@ -4,6 +4,10 @@
 i3-wm
 i3status
 i3lock
+
+# VSync for X11 — i3 is not a compositor, so without this windowed content tears.
+picom
+
 redshift
 rofi
 kitty
