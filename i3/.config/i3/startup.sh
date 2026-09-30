@@ -40,8 +40,11 @@ pgrep -f "[p]olkit-gnome-authentication-agent-1" >/dev/null 2>&1 || \
 
 # Compositor — VSync only, no effects (see ~/.config/picom/picom.conf).
 # i3 has no compositor of its own, so without this, X11 windowed content tears.
-# Guarded so reloading i3 doesn't stack compositors.
-pgrep -x picom >/dev/null 2>&1 || picom &
+# Opt-in per machine: set PICOM_VSYNC=1 in machine.env — the desktop is tear-free
+# and opts out. Guarded so reloading i3 doesn't stack compositors.
+if [ "${PICOM_VSYNC:-0}" = 1 ]; then
+    pgrep -x picom >/dev/null 2>&1 || picom &
+fi
 
 # Screenshots need no daemon any more: maim + slop + xclip, via
 # ~/.local/bin/screenshot.sh (bound to Print / $mod+Shift+s in the i3 config).
