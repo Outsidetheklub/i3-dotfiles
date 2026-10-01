@@ -15,3 +15,24 @@ xsetroot -solid "#000000"
 # 32x32), so 24 here = a 32px cursor.
 export XCURSOR_THEME="breeze-mono-light"
 export XCURSOR_SIZE=24
+
+# Keyboard: Swedish layout fixed for the ANSI keyboard on this box.
+# The stock `se` layout keeps < > | on <LSGT>, the key left of Z that only exists
+# on ISO boards — on an ANSI keyboard those three characters are unreachable.
+# xkb/.config/xkb/symbols/seinans (stowed by install.sh) adds them on the 3rd
+# level, and lv3:caps_switch makes Caps Lock that 3rd level:
+#
+#     Caps + ,  ->  <      Caps + .  ->  >      Caps + -  ->  |
+#
+# (Right Alt is AltGr too, so it does the same thing. Caps Lock has no other job
+# here; on an ISO machine this file is a no-op for < > |.)
+#
+# setxkbmap can NOT do this: it refuses to look outside /usr/share/X11/xkb, so a
+# layout in ~/.config/xkb fails with "Error loading new keyboard description".
+# xkbcomp -I takes the user dir happily, hence the -print | xkbcomp pipeline.
+# The fallback keeps the stock layout if anything here ever breaks.
+if ! setxkbmap -I"$HOME/.config/xkb" -layout seinans -model pc105 \
+        -option lv3:caps_switch -option terminate:ctrl_alt_bksp -print 2>/dev/null \
+     | xkbcomp -I"$HOME/.config/xkb" - "$DISPLAY" 2>/dev/null; then
+    setxkbmap se -option terminate:ctrl_alt_bksp 2>/dev/null
+fi

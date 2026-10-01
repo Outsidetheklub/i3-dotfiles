@@ -1,0 +1,33 @@
+// Swedish layout, fixed for an ANSI (US-shape) keyboard.
+//
+// The stock `se` layout puts < > | on <LSGT> — the extra key that only exists on
+// ISO keyboards, left of Z. On an ANSI board nothing sends that keycode, so those
+// three characters are simply unreachable with plain `setxkbmap se`.
+//
+// This variant includes the stock layout unchanged and adds the missing trio on
+// the 3rd level (AltGr — or Caps Lock, see the lv3:caps_switch option set from
+// ~/.xprofile):
+//
+//     AltGr + ,  ->  <
+//     AltGr + .  ->  >
+//     AltGr + -  ->  |
+//
+// Levels 1/2 are untouched, and level 4 keeps the stock Swedish values
+// (dead_ogonek / ellipsis / dead_abovedot) — only the three level-3 slots that
+// used to hold the rarely used dead_cedilla / periodcentered / dead_belowdot are
+// repurposed. On an ISO keyboard this file changes nothing visible: < > | are
+// still on the key left of Z too.
+//
+// Applied by ~/.xprofile. It lives under ~/.config/xkb, which BOTH xkbcomp (X11,
+// via -I, see .xprofile) and libxkbcommon (Wayland: niri/gnome/kde read this dir
+// automatically) search — so the same file works on either session type.
+
+default partial alphanumeric_keys
+xkb_symbols "basic" {
+    include "se(basic)"
+    name[Group1] = "Swedish (ANSI: <>| on AltGr)";
+
+    key <AB08> { [ comma,  semicolon,    less, dead_ogonek ] }; // AltGr+, = <
+    key <AB09> { [ period,     colon, greater,    ellipsis ] }; // AltGr+. = >
+    key <AB10> { [  minus, underscore,    bar, dead_abovedot ] }; // AltGr+- = |
+};

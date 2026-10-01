@@ -212,6 +212,9 @@ sudo bash system-files/install-system.sh
 
 # 5. keyboard layout for this machine, then reboot
 sudo localectl set-x11-keymap se pc105
+#    On a US/ANSI keyboard the stock layout can't reach < > | (they sit on the
+#    ISO-only key left of Z). That's already fixed by the `xkb` package + the
+#    block at the end of `xprofile/.xprofile` — nothing to do here.
 ```
 
 `install.sh` symlinks everything with GNU Stow (`stow --restow --target=$HOME`).
@@ -404,3 +407,9 @@ Problems actually hit while installing this on real machines:
 - Mouse accel has two layers on purpose: the driver-level `99-mouse-noaccel.conf`
   (permanent, all devices) plus the `mouse-watch.sh` watchdog, because Proton
   games reset the setting at runtime.
+- **`<` `>` `|` on an ANSI keyboard**: the stock `se` layout puts them on `<LSGT>`,
+  the key left of Z that ANSI boards don't have. `xkb/.config/xkb/symbols/seinans`
+  adds them on the 3rd level, and `~/.xprofile` makes **Caps Lock** that 3rd level
+  (`Caps + , . -`): Caps Lock has no other job on this machine, and right Alt works
+  too. ⚠️ `setxkbmap -I` cannot see `~/.config/xkb` (only `/usr/share/X11/xkb`),
+  so the layout is loaded with `... -print | xkbcomp -I"$HOME/.config/xkb" - "$DISPLAY"`.
