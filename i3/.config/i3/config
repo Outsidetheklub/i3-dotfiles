@@ -205,10 +205,13 @@ bindsym $mod+Shift+r restart
 bindsym $mod+Shift+e exec i3-msg exit
 
 # ── Projector / external display (laptop) ───────────────
-# ⚠️ projector.sh is NOT installed on this machine — these two did nothing
-#    here. Left in so they work on the laptop; delete if you don't want them.
-# bindsym $mod+Shift+p exec --no-startup-id $HOME/.local/bin/projector.sh
-# bindsym $mod+Shift+x exec --no-startup-id $HOME/.local/bin/projector.sh extend
+# Manual control for whatever is plugged in. projector.sh auto-detects the
+# connected output and uses the display's OWN preferred mode, so it works with
+# an unknown projector where a saved autorandr profile may not match.
+# Hotplug is automatic (see system-files/autorandr_hotplug.sh); these two are
+# the manual fallbacks — the rescue button during a presentation.
+bindsym $mod+Shift+p exec --no-startup-id $HOME/.local/bin/projector.sh
+bindsym $mod+Shift+x exec --no-startup-id $HOME/.local/bin/projector.sh extend
 
 
 # ── Bar (i3bar + i3status) ───────────────────────────────
