@@ -8,7 +8,7 @@ if status is-interactive
 
     # Better ls
     alias ls='eza --icons --group-directories-first -1'
-
+    alias zed='zeditor'
     # Abbrs
     abbr lg 'lazygit'
     abbr gd 'git diff'
