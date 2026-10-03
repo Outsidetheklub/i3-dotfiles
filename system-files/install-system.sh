@@ -21,12 +21,12 @@ backup() {
     fi
 }
 
-echo "══ 1/4 mouse acceleration (Xorg)"
+echo "══ 1/5 mouse acceleration (Xorg)"
 backup /etc/X11/xorg.conf.d/99-mouse-noaccel.conf
 install -Dm644 99-mouse-noaccel.conf /etc/X11/xorg.conf.d/99-mouse-noaccel.conf
 echo "   installed /etc/X11/xorg.conf.d/99-mouse-noaccel.conf"
 
-echo "══ 2/4 wifi backend (iwd)"
+echo "══ 2/5 wifi backend (iwd)"
 backup /etc/NetworkManager/conf.d/wifi_backend.conf
 install -Dm644 NetworkManager/conf.d/wifi_backend.conf /etc/NetworkManager/conf.d/wifi_backend.conf
 if systemctl is-enabled wpa_supplicant.service >/dev/null 2>&1; then
@@ -35,7 +35,7 @@ if systemctl is-enabled wpa_supplicant.service >/dev/null 2>&1; then
 fi
 echo "   installed /etc/NetworkManager/conf.d/wifi_backend.conf"
 
-echo "══ 3/4 services (NetworkManager, Bluetooth)"
+echo "══ 3/5 services (NetworkManager, Bluetooth)"
 if command -v NetworkManager >/dev/null 2>&1; then
     systemctl enable NetworkManager.service
     systemctl is-active NetworkManager.service >/dev/null 2>&1 || systemctl start NetworkManager.service
@@ -57,7 +57,7 @@ else
     echo "   ! bluez-utils not installed — skipping (the bluetooth rofi menu needs it)"
 fi
 
-echo "══ 4/4 display manager (LightDM + GTK greeter)"
+echo "══ 4/5 display manager (LightDM + GTK greeter)"
 if ! command -v lightdm >/dev/null 2>&1; then
     echo "   ! lightdm is not installed — skipping."
     echo "     sudo pacman -S --needed lightdm lightdm-gtk-greeter"
@@ -69,6 +69,23 @@ else
     echo "   installed /etc/lightdm/lightdm.conf.d/50-i3.conf, lightdm enabled"
 fi
 
+echo "══ 5/5 keyboard layout (Swedish, < > | reachable on an ANSI board)"
+# The X server resolves layouts ONLY from /usr/share/X11/xkb (the user dir
+# ~/.config/xkb is visible to xkbcomp/libxkbcommon, not to Xorg) — so that is
+# where the `seinans` variant has to live. Installing it system-wide also means
+# X hands it to the keyboard on EVERY device add: a login-time script can't
+# survive the keyboard re-enumerating (2.4G/BT switch, replug, re-pair), and used
+# to leave the session on plain `se` with no way to get < > | back.
+# `seinans` = stock `se` + the trio on the 3rd level; lv3:caps_switch makes Caps
+# Lock that 3rd level (Caps + , . -).
+backup /etc/X11/xorg.conf.d/00-keyboard.conf
+install -Dm644 ../xkb/.config/xkb/symbols/seinans /usr/share/X11/xkb/symbols/seinans
+echo "   installed /usr/share/X11/xkb/symbols/seinans"
+localectl set-x11-keymap seinans pc105 "" lv3:caps_switch,terminate:ctrl_alt_bksp
+echo "   set X11 keymap: seinans pc105 (lv3:caps_switch, terminate:ctrl_alt_bksp)"
+# On an ISO keyboard plain `se` is enough (skip the seinans file above):
+#   localectl set-x11-keymap se pc105
+
 cat <<'EOF'
 
 ✔ System side done.
@@ -77,8 +94,7 @@ Still to do (see README):
   1) user files:      ./install.sh              (needs stow; run from the repo)
   2) machine config:  cp examples/{local.conf,display.sh,machine.env} ~/.config/i3/
                       then edit for this box's outputs (xrandr --query | grep connected)
-  3) keyboard layout: sudo localectl set-x11-keymap se pc105
-  4) greeter on the wrong monitor?  see examples/lightdm-display-setup.sh
-  5) AUR browser (optional): paru/yay -> zen-browser-bin   (spotify-launcher is in the official repos)
-  6) reboot and pick i3 in LightDM
+  3) greeter on the wrong monitor?  see examples/lightdm-display-setup.sh
+  4) AUR browser (optional): paru/yay -> zen-browser-bin   (spotify-launcher is in the official repos)
+  5) reboot and pick i3 in LightDM
 EOF

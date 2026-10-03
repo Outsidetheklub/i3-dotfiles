@@ -140,7 +140,7 @@ ones a package list can't give you, because they're machine-specific:
 | Xorg | nothing to do — `lightdm` (in `packages.txt`) depends on `xorg-server`, which brings the server and the libinput driver |
 | GPU driver | **NVIDIA:** `nvidia-open-dkms nvidia-utils lib32-nvidia-utils` — the *open* kernel modules (Turing and newer; required for Blackwell/RTX 50). `nvidia-container-toolkit` too if you use davincibox. **AMD/Intel:** `mesa` + the usual. `/etc/X11/xorg.conf.d/10-nvidia.conf` is per-machine and not tracked |
 | Audio | `pipewire pipewire-pulse pipewire-alsa wireplumber` — in `packages.txt`; `pipewire-alsa` is what gives ALSA-only apps (DaVinci Resolve) sound |
-| Keyboard layout | machine-specific: `localectl set-x11-keymap <layout> [model]` — writes `/etc/X11/xorg.conf.d/00-keyboard.conf`, so this repo never needs a `setxkbmap` line |
+| Keyboard layout | Swedish, with `<` `>` `|` fixed for an ANSI board: `install-system.sh` drops the `seinans` variant into `/usr/share/X11/xkb` and runs `localectl set-x11-keymap seinans pc105 "" lv3:caps_switch,terminate:ctrl_alt_bksp`. That default is what X applies on every keyboard (re)connect, so no `setxkbmap` line is needed |
 | AUR helper | only for two things: the browser (`zen-browser-bin`) and the folder recolour (`papirus-folders-git`) — `base-devel git` + an AUR helper (paru/yay), 3-line recipe below |
 | Fonts | `noto-fonts` for the bar/terminal (`monospace`) and `ttf-firacode-nerd` for GTK apps — both in `packages.txt` |
 | Cursor theme | nothing to do — `install.sh` builds the monochrome Breeze set itself. `breeze-cursors` (the source theme) + `python` are in `packages.txt` for that |
@@ -207,14 +207,11 @@ cp examples/local.conf examples/display.sh examples/machine.env ~/.config/i3/
 chmod +x ~/.config/i3/display.sh
 
 # 4. the root-side files + services, in one go
-#    (mouse accel, iwd wifi backend, NetworkManager + bluetooth, LightDM)
+#    (mouse accel, iwd wifi backend, NetworkManager + bluetooth, LightDM,
+#     keyboard layout)
 sudo bash system-files/install-system.sh
 
-# 5. keyboard layout for this machine, then reboot
-sudo localectl set-x11-keymap se pc105
-#    On a US/ANSI keyboard the stock layout can't reach < > | (they sit on the
-#    ISO-only key left of Z). That's already fixed by the `xkb` package + the
-#    block at the end of `xprofile/.xprofile` — nothing to do here.
+# 5. reboot and pick i3 in LightDM
 ```
 
 `install.sh` symlinks everything with GNU Stow (`stow --restow --target=$HOME`).
@@ -409,7 +406,15 @@ Problems actually hit while installing this on real machines:
   games reset the setting at runtime.
 - **`<` `>` `|` on an ANSI keyboard**: the stock `se` layout puts them on `<LSGT>`,
   the key left of Z that ANSI boards don't have. `xkb/.config/xkb/symbols/seinans`
-  adds them on the 3rd level, and `~/.xprofile` makes **Caps Lock** that 3rd level
-  (`Caps + , . -`): Caps Lock has no other job on this machine, and right Alt works
-  too. ⚠️ `setxkbmap -I` cannot see `~/.config/xkb` (only `/usr/share/X11/xkb`),
-  so the layout is loaded with `... -print | xkbcomp -I"$HOME/.config/xkb" - "$DISPLAY"`.
+  adds them on the 3rd level, and `lv3:caps_switch` makes **Caps Lock** that 3rd
+  level (`Caps + , . -` → `< > |`): Caps Lock has no other job on this machine, and
+  right Alt works too.
+  The variant is installed into **`/usr/share/X11/xkb`** by `install-system.sh`
+  (X only resolves layouts from there — `~/.config/xkb` is for xkbcomp and
+  libxkbcommon/Wayland), and set as the system default via `localectl`, so X applies
+  it on **every** keyboard connect. That matters: a login-time script only runs once,
+  and the keyboard (2.4G dongle / BT) re-enumerates into a new device after login —
+  X then re-applies the default rules and would silently drop the mapping.
+  `~/.xprofile` still applies it too, as a fallback for machines where the
+  system-side step wasn't run (`setxkbmap -I` can't see `~/.config/xkb`, hence the
+  `... -print | xkbcomp -I"$HOME/.config/xkb" - "$DISPLAY"` pipeline).

@@ -17,6 +17,14 @@ export XCURSOR_THEME="breeze-mono-light"
 export XCURSOR_SIZE=24
 
 # Keyboard: Swedish layout fixed for the ANSI keyboard on this box.
+#
+# PRIMARY: system-files/install-system.sh installs the seinans variant into
+# /usr/share/X11/xkb and makes `seinans + lv3:caps_switch` the X default, so the
+# mapping is applied by X on EVERY keyboard add. The block below is only a
+# FALLBACK (e.g. a machine where that root step wasn't run): a login-time script
+# runs once, and the keyboard re-enumerating later (2.4G/BT switch, replug) makes
+# X re-apply its default rules — which without the system step means plain `se`.
+#
 # The stock `se` layout keeps < > | on <LSGT>, the key left of Z that only exists
 # on ISO boards — on an ANSI keyboard those three characters are unreachable.
 # xkb/.config/xkb/symbols/seinans (stowed by install.sh) adds them on the 3rd
