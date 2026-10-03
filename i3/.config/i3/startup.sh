@@ -34,9 +34,17 @@ fi
 xsetroot -solid "#000000"
 
 # Polkit auth agent (so Thunar can ask for a password to mount drives etc).
-# The wrapper finds whatever this distro ships (polkit-gnome on Arch, mate-polkit
-# on Debian) and no-ops if none is installed; it is duplicate-guarded itself.
+# The wrapper finds whichever agent package is installed and no-ops if none is;
+# it is duplicate-guarded itself.
 ~/.local/bin/polkit-agent &
+
+# SPICE guest agent — VMs only: clipboard sharing with the host, plus automatic
+# resolution resize. i3 does NOT run XDG autostart entries, so the .desktop file
+# spice-vdagent ships never fires and the clipboard silently does nothing — start
+# it here instead. The virtio-port check makes this a no-op on bare metal.
+if [ -e /dev/virtio-ports/com.redhat.spice.0 ] && command -v spice-vdagent >/dev/null 2>&1; then
+    pgrep -x spice-vdagent >/dev/null 2>&1 || spice-vdagent &
+fi
 
 # Compositor — VSync only, no effects (see ~/.config/picom/picom.conf).
 # i3 has no compositor of its own, so without this, X11 windowed content tears.

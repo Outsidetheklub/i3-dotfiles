@@ -1,6 +1,5 @@
 # Packages this setup needs (Arch).
 # Install:  grep -v '^#' packages.txt | xargs sudo pacman -S --needed
-# Debian? use packages.debian.txt — same setup, Debian names.
 
 i3-wm
 i3status

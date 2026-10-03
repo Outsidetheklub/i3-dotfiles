@@ -25,7 +25,6 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `system-files/NetworkManager/conf.d/wifi_backend.conf` | `/etc/NetworkManager/conf.d/` | wifi through iwd instead of wpa_supplicant (needs root) |
 | `system-files/lightdm/50-i3.conf` | `/etc/lightdm/lightdm.conf.d/` | LightDM seat: i3 session + GTK greeter (needs root) |
 | `system-files/install-system.sh` | — | all of the above in one `sudo bash`, plus it enables NetworkManager/Bluetooth and enables LightDM (idempotent, backs up) |
-| `packages.txt` / `packages.debian.txt` | — | the package lists (Arch / Debian names) — `install.sh` detects the host and points at the right one |
 | `src/gamepad-idle-guard.c` | (compiled into `~/.local/bin/`) | X11 helper that keeps the screen awake while a gamepad is in use — `install.sh` builds it |
 | `examples/local.conf` | `~/.config/i3/local.conf` | template for machine-specific i3 config |
 | `examples/display.sh` | `~/.config/i3/display.sh` | template for machine-specific xrandr setup (`examples/display-laptop-7490.sh` is the 7490's known-good version) |
@@ -197,7 +196,6 @@ The full order for a fresh machine:
 
 ```sh
 # 1. packages (git + stow first: install.sh needs them)
-#    on Debian: packages.debian.txt + `sudo apt install` — see "Debian (apt) machines"
 sudo pacman -S --needed git stow
 git clone git@github.com:Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
 cd ~/i3-dotfiles
@@ -270,124 +268,6 @@ with blue folders.
 > just `sudo pacman -S paru zen-browser-bin` (`papirus-folders-git` is mirrored
 > too — `paru -S papirus-folders-git` works without building).
 
-## Debian (apt) machines
-
-The setup is distro-neutral — the stow packages are plain config, and both
-installers detect the package manager — so a Debian machine runs the same repo
-with different package names. This section is the whole path: install Debian,
-then this repo.
-
-### 1. Install Debian
-
-Get the **netinst** image (`debian-<version>-amd64-netinst.iso`) — despite the
-name it's the "minimal" one: the installer plus a very basic system, with
-anything else pulled from the network. Don't bother with the CD/DVD sets. Same
-image for a VM.
-
-Boot it and pick **"Graphical expert install"** (or *Advanced options → expert
-install*). Expert mode gives you the prompts that matter below instead of
-fighting the defaults.
-
-**Partitioning** — the one step to slow down for. "Guided – use entire disk" is
-fine on a throwaway VM; on real hardware pick "Manual" and use the same shape as
-the Arch box: an **EFI System Partition** (vfat, 512 MB–1 GB, mounted
-`/boot/efi`) plus a root filesystem, swap if you want hibernation.
-
-**User setup — this is the step that decides whether you get `sudo`:**
-
-- **Leave the root password EMPTY.** The installer then installs `sudo` and puts
-your user in the `sudo` group. That is the *only* thing that does this.
-- **Set a root password instead** → you get root logins and **no `sudo`**. It is
-  not a task: "standard system utilities" does *not* include it. (Verified in
-tasksel 3.81 — the `standard` task is defined as `Packages: standard`, i.e. the
-  `Priority: standard` set, and `sudo` is `Priority: optional`.) Adding it later
-  is easy — see *First boot* — but the installer won't do it for you.
-
-**Mirrors + components:** enable **`contrib`**, **`non-free`** and
-**`non-free-firmware`**. The installer offers the last one for a reason: wifi and
-GPU firmware live there.
-
-**Software selection (tasksel):**
-
-- **Uncheck the desktop environment.** This repo *is* the desktop.
-- **Keep "standard system utilities".** Unticking it drops `man-db`, `locales`,
-cron and friends — you'll spend the first ten minutes re-adding obvious things.
-
-Then finish and reboot.
-
-### 2. First boot (before the repo)
-
-```sh
-# Only if you set a root password at install time (i.e. you have no sudo).
-# Log in as root, or `su -` from your user, then:
-apt update && apt install sudo
-usermod -aG sudo <you>          # ⚠️ takes effect on the NEXT login
-
-# Stop apt from dragging in "recommends" everywhere. Debian's real bloat lives
-# here (Arch has no equivalent — this is what makes apt behave like pacman).
-printf 'APT::Install-Recommends "false";\nAPT::Install-Suggests "false";\n' \
-    | sudo tee /etc/apt/apt.conf.d/99no-recommends
-```
-
-⚠️ **`su` vs `su -`** (and the Arch reflex that breaks here): `usermod`,
-`adduser`, `fdisk`, `visudo` and friends live in `/usr/sbin` and `/sbin`, which a
-normal user's `PATH` does not include. A plain `su` makes you root but **keeps
-your user's PATH**, so those come back as `command not found` even though the
-binaries exist — and any command that "worked earlier" silently didn't. Use
-**`su -`**, or `sudo`, or the full path. Arch hides this from you: usrmerge put
-everything in `/usr/bin` and `/etc/profile` adds the sbin dirs for all users.
-
-### 3. Then this repo
-
-```sh
-sudo apt install git stow                     # install.sh needs both
-git clone git@github.com:Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
-cd ~/i3-dotfiles
-grep -v '^#' packages.debian.txt | xargs sudo apt install
-
-./install.sh
-sudo bash system-files/install-system.sh
-# then the machine-specific files, exactly as in "Recreating this on another machine"
-```
-
-The X-side pieces — `xorg.conf.d`, LightDM, NetworkManager + iwd, Bluetooth, and
-`localectl` for the keyboard — are identical on both distros.
-
-### What Debian doesn't ship (and the fixes)
-
-- **Package list:** `packages.debian.txt` (Arch names live in `packages.txt`).
-  `install.sh` prints the right install command for whichever host it's run on.
-- **polkit agent:** Debian has no `polkit-gnome`, so use **`mate-polkit`**. No
-  config change needed — `startup.sh` calls `local-bin/.local/bin/polkit-agent`,
-  which finds whatever agent the distro installed (Arch: polkit-gnome; Debian:
-  mate-polkit / lxpolkit / polkit-kde-agent-1).
-- **Nerd fonts, not Debian fonts:** the setup asks for the Nerd families
-  (`Terminess Nerd Font Mono`, `FiraCode Nerd Font`). Debian's `fonts-terminus`
-  and `fonts-firacode` are the *plain* fonts and do **not** provide them — install
-  the nerd builds instead: <https://github.com/ryanoasis/nerd-fonts/releases> →
-  `Terminus.zip` + `FiraCode.zip` →
-  `unzip -o Terminus.zip FiraCode.zip -d ~/.local/share/fonts && fc-cache -f`.
-- **`adw-gtk3`** (the GTK theme): not packaged — build it (meson/ninja, no
-  compiler work) from <https://github.com/lassekongo83/adw-gtk3>.
-- **`papirus-folders`** (the white folder recolour): not packaged — it's one bash
-  script: <https://github.com/PapirusDevelopmentTeam/papirus-folders> →
-  `/usr/local/bin` (`install.sh` uses it if present).
-- **`uv`** (for `terminus-bold`): not in trixie —
-  `curl -LsSf https://astral.sh/uv/install.sh | sh`.
-- **Browser / Spotify:** `zen-browser` and `spotify-launcher` are Arch-only. On
-  Debian: Zen's own apt repo / `.deb` / Flatpak (<https://zen-browser.app>), and
-  Spotify's official apt repo (`spotify-client`) or Flatpak.
-- **`local-bin/pkg-sources`** is Arch-only by design (it reads pacman/AUR data) —
-  harmless on Debian, just useless.
-
-### VM notes
-
-- No vendor GPU driver: `mesa` (in the list) does software rendering, so skip the
-  NVIDIA pieces. Output names differ too — a VM's X output is usually
-  `Virtual-1`, so `local.conf` / `display.sh` need that instead of `DP-4`.
-- Everything else — fonts, icons, cursor, i3, rofi, the scripts — behaves the
-  same as on bare metal.
-
 ## Machine-specific config
 
 `~/.config/i3/config` ends with `include ~/.config/i3/local.conf`. That file is
@@ -430,7 +310,6 @@ sudo pacman -S --needed git stow
 git clone git@github.com:Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
 cd ~/i3-dotfiles
 grep -v '^#' packages.txt | xargs sudo pacman -S --needed   # + AUR: zen-browser-bin (see below)
-# on Debian: `grep -v '^#' packages.debian.txt | xargs sudo apt install` — see "Debian (apt) machines"
 
 # then deploy everything:
 ./install.sh

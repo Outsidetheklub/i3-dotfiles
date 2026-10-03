@@ -6,21 +6,8 @@ set -eu
 
 cd "$(dirname "$0")"
 
-# --- which distro are we on? ------------------------------------------------
-# The stow packages below are identical everywhere; only the package manager (and
-# a handful of package names) differ. Pick the matching list + install command so
-# every message below tells the truth on Arch and Debian alike.
-if command -v pacman >/dev/null 2>&1; then
-    DISTRO="Arch";   PKG_LIST="packages.txt";        PKG_INSTALL="sudo pacman -S --needed"
-elif command -v apt-get >/dev/null 2>&1; then
-    DISTRO="Debian"; PKG_LIST="packages.debian.txt"; PKG_INSTALL="sudo apt install"
-else
-    DISTRO="unknown"; PKG_LIST="packages.txt";       PKG_INSTALL="(your package manager)"
-fi
-echo "==> detected $DISTRO (package list: $PKG_LIST)"
-
 if ! command -v stow >/dev/null 2>&1; then
-    echo "GNU Stow is required:  $PKG_INSTALL stow" >&2
+    echo "GNU Stow is required:  sudo pacman -S stow" >&2
     exit 1
 fi
 
@@ -70,7 +57,7 @@ if command -v papirus-folders >/dev/null 2>&1; then
         fi
     fi
 else
-    echo "==> skipping papirus-folders: needs papirus-icon-theme + the papirus-folders script (see $PKG_LIST)" >&2
+    echo "==> skipping papirus-folders: needs 'papirus-icon-theme' + 'papirus-folders-git' (see packages.txt)"
 fi
 
 # Terminus Bold under its own family name (local-bin/terminus-bold). The browser's
@@ -98,7 +85,7 @@ if [ -f src/gamepad-idle-guard.c ]; then
            src/gamepad-idle-guard.c -lX11 -lXss -lXext; then
         echo "   built ~/.local/bin/gamepad-idle-guard"
     else
-        echo "   !! build failed — needs a C compiler + libX11/libXext/libXss headers ($PKG_LIST)" >&2
+        echo "   !! build failed — needs a C compiler + libX11/libXext/libXss headers (see packages.txt)" >&2
     fi
 fi
 echo
@@ -108,7 +95,7 @@ echo "  1) mouse accel (root):  sudo cp system-files/99-mouse-noaccel.conf /etc/
 echo "  2) wifi backend (root): sudo cp system-files/NetworkManager/conf.d/wifi_backend.conf /etc/NetworkManager/conf.d/"
 echo "       sudo systemctl disable --now wpa_supplicant.service   # iwd takes over (see packages.txt)"
 echo "  3) display manager (root, not stowed):"
-echo "       $PKG_INSTALL lightdm lightdm-gtk-greeter"
+echo "       sudo pacman -S --needed lightdm lightdm-gtk-greeter"
 echo "       sudo install -Dm644 system-files/lightdm/50-i3.conf /etc/lightdm/lightdm.conf.d/50-i3.conf"
 echo "       sudo systemctl disable sddm.service ; sudo systemctl enable lightdm.service"
 echo "     greeter on the wrong monitor / wrong refresh rate? -> examples/lightdm-display-setup.sh"
@@ -119,8 +106,8 @@ echo "       cp examples/display.sh ~/.config/i3/display.sh      # xrandr (2nd m
 echo "       cp examples/machine.env ~/.config/i3/machine.env    # location, interfaces, screenshot dir"
 echo "       chmod +x ~/.config/i3/display.sh"
 echo "       -> then edit all three: xrandr --query | grep ' connected'"
-echo "  5) make sure the packages in $PKG_LIST are installed"
-echo "       grep -v '^#' $PKG_LIST | xargs $PKG_INSTALL   # works in bash + fish"
+echo "  5) make sure the packages in packages.txt are installed"
+echo "       grep -v '^#' packages.txt | xargs sudo pacman -S --needed   # works in bash + fish"
 echo "  6) sanity check:  i3 -C -c ~/.config/i3/config"
 echo "  7) log out and pick i3 in LightDM"
 echo "     icons: if install.sh couldn't recolour them, run"

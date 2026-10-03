@@ -7,21 +7,12 @@
 # Idempotent, safe to re-run. Anything it would overwrite gets a copy next to it
 # as <file>.bak-YYYY-MM-DD first. Nothing is deleted, nothing is uninstalled.
 #
-# It does NOT install packages — do that first (install.sh prints the exact
-# command; packages.txt = Arch, packages.debian.txt = Debian).
+# It does NOT install packages — do that first:
+#     grep -v '^#' packages.txt | xargs sudo pacman -S --needed
 
 set -eu
 [ "$(id -u)" -eq 0 ] || { echo "run me with sudo:  sudo bash $0" >&2; exit 1; }
 cd "$(dirname "$0")"
-
-# Package-manager label, only used for the "you still need X" messages below.
-if command -v pacman >/dev/null 2>&1; then
-    PKG_INSTALL="sudo pacman -S --needed"
-elif command -v apt-get >/dev/null 2>&1; then
-    PKG_INSTALL="sudo apt install"
-else
-    PKG_INSTALL="(your package manager)"
-fi
 
 backup() {
     if [ -e "$1" ] && [ ! -L "$1" ]; then
@@ -69,7 +60,7 @@ fi
 echo "══ 4/5 display manager (LightDM + GTK greeter)"
 if ! command -v lightdm >/dev/null 2>&1; then
     echo "   ! lightdm is not installed — skipping."
-    echo "     $PKG_INSTALL lightdm lightdm-gtk-greeter"
+    echo "     sudo pacman -S --needed lightdm lightdm-gtk-greeter"
 else
     backup /etc/lightdm/lightdm.conf.d/50-i3.conf
     install -Dm644 lightdm/50-i3.conf /etc/lightdm/lightdm.conf.d/50-i3.conf
@@ -104,7 +95,6 @@ Still to do (see README):
   2) machine config:  cp examples/{local.conf,display.sh,machine.env} ~/.config/i3/
                       then edit for this box's outputs (xrandr --query | grep connected)
   3) greeter on the wrong monitor?  see examples/lightdm-display-setup.sh
-  4) browser (optional): Arch -> AUR zen-browser-bin; Debian -> Zen's apt repo or Flatpak
-     (spotify is the same story: Spotify's apt repo / Flatpak on Debian)
+  4) AUR browser (optional): paru/yay -> zen-browser-bin   (spotify-launcher is in the official repos)
   5) reboot and pick i3 in LightDM
 EOF
