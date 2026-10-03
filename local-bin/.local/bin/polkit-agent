@@ -1,0 +1,27 @@
+#!/bin/sh
+# Start this machine's polkit authentication agent, if one is installed.
+#
+# The agent is what puts up the "authentication required" dialog — e.g. when
+# Thunar mounts a drive. Its path is distro-specific (Arch ships polkit-gnome;
+# Debian has mate-polkit / lxpolkit / polkit-kde-agent-1), so i3's startup.sh
+# calls this wrapper instead of hard-coding one path, and the same dotfiles work
+# on both.
+#
+# Duplicate-guarded: no-op if the agent is already running (i3 reloads would
+# otherwise stack them up). Exits 0 when nothing is installed — you just don't
+# get GUI auth prompts.
+set -u
+
+for agent in \
+    /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 \
+    /usr/lib/mate-polkit/polkit-mate-authentication-agent-1 \
+    /usr/lib/lxpolkit/lxpolkit \
+    /usr/lib/polkit-kde-authentication-agent-1 \
+    /usr/lib/x86_64-linux-gnu/libexec/polkit-kde-authentication-agent-1
+do
+    [ -x "$agent" ] || continue
+    pgrep -f "$(basename "$agent")" >/dev/null 2>&1 && exit 0
+    exec "$agent"
+done
+
+exit 0

@@ -52,7 +52,7 @@ done
 
 for t in maim slop; do
     command -v "$t" >/dev/null 2>&1 || {
-        echo "screenshot.sh: $t is not installed (sudo pacman -S --needed maim slop)" >&2
+        echo "screenshot.sh: $t is not installed (install maim + slop — see packages.txt / packages.debian.txt)" >&2
         exit 1
     }
 done

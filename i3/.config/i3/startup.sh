@@ -34,9 +34,9 @@ fi
 xsetroot -solid "#000000"
 
 # Polkit auth agent (so Thunar can ask for a password to mount drives etc).
-# Guarded so restarting i3 doesn't stack up agents.
-pgrep -f "[p]olkit-gnome-authentication-agent-1" >/dev/null 2>&1 || \
-    /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &
+# The wrapper finds whatever this distro ships (polkit-gnome on Arch, mate-polkit
+# on Debian) and no-ops if none is installed; it is duplicate-guarded itself.
+~/.local/bin/polkit-agent &
 
 # Compositor — VSync only, no effects (see ~/.config/picom/picom.conf).
 # i3 has no compositor of its own, so without this, X11 windowed content tears.

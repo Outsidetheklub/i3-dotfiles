@@ -18,13 +18,14 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `i3/.config/i3/mouse-watch.sh` | `~/.config/i3/` | watchdog that keeps libinput mouse acceleration off (games reset it) |
 | `i3status/.config/i3status/config` | `~/.config/i3status/` | bar modules: wifi, disk free, RAM used/available, clock |
 | `rofi/.config/rofi/config.rasi` | `~/.config/rofi/` | launcher — black, centered, no icons. Also used by the power menu |
-| `local-bin/.local/bin/*` | `~/.local/bin/` | scripts: power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`), wifi menu (`$mod+Shift+n`), screenshots (`Print`, `$mod+Shift+s`), projector, mouse-to-focused, monochrome cursor builder (`mono-cursor`), … |
+| `local-bin/.local/bin/*` | `~/.local/bin/` | scripts: power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`), wifi menu (`$mod+Shift+n`), screenshots (`Print`, `$mod+Shift+s`), projector, mouse-to-focused, monochrome cursor builder (`mono-cursor`), the distro-neutral polkit agent (`polkit-agent`), … |
 | `gtk/.config/mimeapps.list` | `~/.config/` | file associations: **sxiv** for images, **mpv** for video, zen for links/HTML. Apps may append to this — that shows up as a real diff, which is the point |
-| `xprofile/.xprofile` | `~/.xprofile` | repaints the root window black (ghost login screen) + flatpak env |
+| `xprofile/.xprofile` | `~/.xprofile` | repaints the root window black (ghost login screen), cursor env, flatpak env, and (as a fallback) the ANSI keyboard layout |
 | `system-files/99-mouse-noaccel.conf` | `/etc/X11/xorg.conf.d/` | the actual fix for mouse acceleration (needs root) |
 | `system-files/NetworkManager/conf.d/wifi_backend.conf` | `/etc/NetworkManager/conf.d/` | wifi through iwd instead of wpa_supplicant (needs root) |
 | `system-files/lightdm/50-i3.conf` | `/etc/lightdm/lightdm.conf.d/` | LightDM seat: i3 session + GTK greeter (needs root) |
 | `system-files/install-system.sh` | — | all of the above in one `sudo bash`, plus it enables NetworkManager/Bluetooth and enables LightDM (idempotent, backs up) |
+| `packages.txt` / `packages.debian.txt` | — | the package lists (Arch / Debian names) — `install.sh` detects the host and points at the right one |
 | `examples/local.conf` | `~/.config/i3/local.conf` | template for machine-specific i3 config |
 | `examples/display.sh` | `~/.config/i3/display.sh` | template for machine-specific xrandr setup (`examples/display-laptop-7490.sh` is the 7490's known-good version) |
 | `examples/lightdm-display-setup.sh` | `/usr/local/bin/` | template: pin the greeter's monitor + refresh rate (needs root) |
@@ -194,6 +195,7 @@ The full order for a fresh machine:
 
 ```sh
 # 1. packages (git + stow first: install.sh needs them)
+#    on Debian: packages.debian.txt + `sudo apt install` — see "Debian (apt) machines"
 sudo pacman -S --needed git stow
 git clone git@github.com:Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
 cd ~/i3-dotfiles
@@ -266,6 +268,55 @@ with blue folders.
 > just `sudo pacman -S paru zen-browser-bin` (`papirus-folders-git` is mirrored
 > too — `paru -S papirus-folders-git` works without building).
 
+## Debian (apt) machines
+
+The setup is distro-neutral — the stow packages are plain config, and both
+installers detect the package manager — so Debian only changes the package names
+plus a short list of things Debian doesn't ship:
+
+- **Package list:** `packages.debian.txt` (Arch names live in `packages.txt`).
+  `install.sh` prints the right install command for whichever host it's run on.
+- **polkit agent:** Debian has no `polkit-gnome`, so use **`mate-polkit`**. No
+  config change needed — `startup.sh` calls `local-bin/.local/bin/polkit-agent`,
+  which finds whatever agent the distro installed (Arch: polkit-gnome; Debian:
+  mate-polkit / lxpolkit / polkit-kde-agent-1).
+- **Nerd fonts, not Debian fonts:** the setup asks for the Nerd families
+  (`Terminess Nerd Font Mono`, `FiraCode Nerd Font`). Debian's `fonts-terminus`
+  and `fonts-firacode` are the *plain* fonts and do **not** provide them — install
+  the nerd builds instead: <https://github.com/ryanoasis/nerd-fonts/releases> →
+  `Terminus.zip` + `FiraCode.zip` →
+  `unzip -o Terminus.zip FiraCode.zip -d ~/.local/share/fonts && fc-cache -f`.
+- **`adw-gtk3`** (the GTK theme): not packaged — build it (meson/ninja, no
+  compiler work) from <https://github.com/lassekongo83/adw-gtk3>.
+- **`papirus-folders`** (the white folder recolour): not packaged — it's one bash
+  script: <https://github.com/PapirusDevelopmentTeam/papirus-folders> →
+  `/usr/local/bin` (`install.sh` uses it if present).
+- **`uv`** (for `terminus-bold`): not in trixie —
+  `curl -LsSf https://astral.sh/uv/install.sh | sh`.
+- **Browser / Spotify:** `zen-browser` and `spotify-launcher` are Arch-only. On
+  Debian: Zen's own apt repo / `.deb` / Flatpak (<https://zen-browser.app>), and
+  Spotify's official apt repo (`spotify-client`) or Flatpak.
+- **`local-bin/pkg-sources`** is Arch-only by design (it reads pacman/AUR data) —
+  harmless on Debian, just useless.
+
+Install:
+
+```sh
+sudo apt install git stow                     # install.sh needs both
+git clone git@github.com:Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
+cd ~/i3-dotfiles
+grep -v '^#' packages.debian.txt | xargs sudo apt install
+
+./install.sh
+sudo bash system-files/install-system.sh
+# then the machine-specific files, exactly as in "Recreating this on another machine"
+```
+
+`contrib`, `non-free` and `non-free-firmware` must be enabled (trixie's installer
+offers the last one). The X-side pieces — `xorg.conf.d`, LightDM, NetworkManager
++ iwd, Bluetooth, and `localectl` for the keyboard — are identical on both
+distros.
+
 ## Machine-specific config
 
 `~/.config/i3/config` ends with `include ~/.config/i3/local.conf`. That file is
@@ -308,6 +359,7 @@ sudo pacman -S --needed git stow
 git clone git@github.com:Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
 cd ~/i3-dotfiles
 grep -v '^#' packages.txt | xargs sudo pacman -S --needed   # + AUR: zen-browser-bin (see below)
+# on Debian: `grep -v '^#' packages.debian.txt | xargs sudo apt install` — see "Debian (apt) machines"
 
 # then deploy everything:
 ./install.sh
