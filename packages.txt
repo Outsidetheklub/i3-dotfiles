@@ -84,6 +84,13 @@ mpv
 xorg-server
 mesa
 
+# Headers for the gamepad-idle-guard build (src/gamepad-idle-guard.c, compiled by
+# install.sh). On Arch the headers ship inside these lib packages — no -dev split.
+# (A compiler is needed too; that's base-devel.)
+libx11
+libxext
+libxss
+
 # Display manager (LightDM + GTK greeter; config in system-files/lightdm/)
 lightdm
 lightdm-gtk-greeter

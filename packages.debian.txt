@@ -121,6 +121,12 @@ build-essential
 curl
 unzip
 
+# Headers for the gamepad-idle-guard build (src/gamepad-idle-guard.c, compiled by
+# install.sh) — Debian splits them out as -dev packages.
+libx11-dev
+libxext-dev
+libxss-dev
+
 # ── Not in Debian's repos ────────────────────────────────────────────────────
 #   adw-gtk3 (the GTK theme)  - build it: https://github.com/lassekongo83/adw-gtk3
 #                               (meson/ninja; no compiling, it just installs CSS

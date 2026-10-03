@@ -84,6 +84,23 @@ if [ -x "$HOME/.local/bin/terminus-bold" ]; then
 else
     echo "==> skipping terminus-bold: not stowed yet"
 fi
+
+# gamepad-idle-guard — keep the display awake while a gamepad is in use (X11 only
+# counts keyboard/mouse as activity, so DPMS blanked mid-game). The source is
+# src/gamepad-idle-guard.c; build it into ~/.local/bin here. Needs a C compiler +
+# the libX11/libXext/libXss headers, and membership in the `input` group to read
+# /dev/input (see README).
+if [ -f src/gamepad-idle-guard.c ]; then
+    echo "==> gamepad-idle-guard (build)"
+    mkdir -p "$HOME/.local/bin"
+    if command -v cc >/dev/null 2>&1 && \
+       cc -O2 -o "$HOME/.local/bin/gamepad-idle-guard" \
+           src/gamepad-idle-guard.c -lX11 -lXss -lXext; then
+        echo "   built ~/.local/bin/gamepad-idle-guard"
+    else
+        echo "   !! build failed — needs a C compiler + libX11/libXext/libXss headers ($PKG_LIST)" >&2
+    fi
+fi
 echo
 # Root-owned files are not stowed (they live outside $HOME).
 echo "Done. Remaining manual steps:"

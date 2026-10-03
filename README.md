@@ -26,6 +26,7 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `system-files/lightdm/50-i3.conf` | `/etc/lightdm/lightdm.conf.d/` | LightDM seat: i3 session + GTK greeter (needs root) |
 | `system-files/install-system.sh` | — | all of the above in one `sudo bash`, plus it enables NetworkManager/Bluetooth and enables LightDM (idempotent, backs up) |
 | `packages.txt` / `packages.debian.txt` | — | the package lists (Arch / Debian names) — `install.sh` detects the host and points at the right one |
+| `src/gamepad-idle-guard.c` | (compiled into `~/.local/bin/`) | X11 helper that keeps the screen awake while a gamepad is in use — `install.sh` builds it |
 | `examples/local.conf` | `~/.config/i3/local.conf` | template for machine-specific i3 config |
 | `examples/display.sh` | `~/.config/i3/display.sh` | template for machine-specific xrandr setup (`examples/display-laptop-7490.sh` is the 7490's known-good version) |
 | `examples/lightdm-display-setup.sh` | `/usr/local/bin/` | template: pin the greeter's monitor + refresh rate (needs root) |
@@ -142,6 +143,7 @@ ones a package list can't give you, because they're machine-specific:
 | GPU driver | **NVIDIA:** `nvidia-open-dkms nvidia-utils lib32-nvidia-utils` — the *open* kernel modules (Turing and newer; required for Blackwell/RTX 50). `nvidia-container-toolkit` too if you use davincibox. **AMD/Intel:** `mesa` + the usual. `/etc/X11/xorg.conf.d/10-nvidia.conf` is per-machine and not tracked |
 | Audio | `pipewire pipewire-pulse pipewire-alsa wireplumber` — in `packages.txt`; `pipewire-alsa` is what gives ALSA-only apps (DaVinci Resolve) sound |
 | Keyboard layout | Swedish, with `<` `>` `|` fixed for an ANSI board: `install-system.sh` drops the `seinans` variant into `/usr/share/X11/xkb` and runs `localectl set-x11-keymap seinans pc105 "" lv3:caps_switch,terminate:ctrl_alt_bksp`. That default is what X applies on every keyboard (re)connect, so no `setxkbmap` line is needed |
+| Gamepad guard | the user must be in the **`input`** group, so `gamepad-idle-guard` can read `/dev/input` and notice controller activity: `sudo usermod -aG input $USER`, then re-login |
 | AUR helper | only for two things: the browser (`zen-browser-bin`) and the folder recolour (`papirus-folders-git`) — `base-devel git` + an AUR helper (paru/yay), 3-line recipe below |
 | Fonts | `noto-fonts` for the bar/terminal (`monospace`) and `ttf-firacode-nerd` for GTK apps — both in `packages.txt` |
 | Cursor theme | nothing to do — `install.sh` builds the monochrome Breeze set itself. `breeze-cursors` (the source theme) + `python` are in `packages.txt` for that |
@@ -456,6 +458,12 @@ Problems actually hit while installing this on real machines:
 - Mouse accel has two layers on purpose: the driver-level `99-mouse-noaccel.conf`
   (permanent, all devices) plus the `mouse-watch.sh` watchdog, because Proton
   games reset the setting at runtime.
+- **Gamepad vs blanking**: X11 only counts keyboard/mouse as activity, so the
+  screen blanked mid-game whenever you played with a controller (the kernel saw
+  the pad, X didn't). `src/gamepad-idle-guard.c` — built by `install.sh` into
+  `~/.local/bin/` — watches `/dev/input` for gamepad events, disables DPMS while
+  one is active, and restores blanking once you're demonstrably back on
+  keyboard/mouse. Needs the user in the `input` group (see Prerequisites).
 - **`<` `>` `|` on an ANSI keyboard**: the stock `se` layout puts them on `<LSGT>`,
   the key left of Z that ANSI boards don't have. `xkb/.config/xkb/symbols/seinans`
   adds them on the 3rd level, and `lv3:caps_switch` makes **Caps Lock** that 3rd
