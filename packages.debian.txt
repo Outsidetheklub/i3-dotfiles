@@ -18,6 +18,13 @@
 #   mesa                       -> libgl1-mesa-dri + mesa-utils
 #   noto-fonts                 -> fonts-noto (+ fonts-noto-color-emoji)
 
+# sudo is NOT part of "standard system utilities" — the Debian installer only
+# installs it when you leave the root password EMPTY. Listed so a box that set a
+# root password still ends up with it. Install it as root BEFORE running the
+# "apt install everything" line:  apt install sudo && usermod -aG sudo <you>
+# (then log out/in). See README -> "Debian (apt) machines".
+sudo
+
 i3-wm
 i3status
 i3lock
