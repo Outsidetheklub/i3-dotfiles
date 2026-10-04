@@ -20,7 +20,7 @@
 set $mod Mod4
 set $terminal kitty
 set $browser zen-browser
-set $editor vscodium
+set $editor zed
 set $filemanager thunar
 
 # Font: Terminus (see kitty.conf for the whole story). pango can't resolve a
@@ -88,10 +88,10 @@ bindsym $mod+Shift+b exec --no-startup-id ~/.local/bin/bluetooth-rofi.sh
 bindsym $mod+Shift+n exec --no-startup-id ~/.local/bin/network-rofi.sh
 
 # ── Window navigation ───────────────────────────────────
-bindsym $mod+h focus left
-bindsym $mod+j focus down
-bindsym $mod+k focus up
-bindsym $mod+l focus right
+bindsym $mod+h focus left, exec --no-startup-id ~/.local/bin/mouse-to-focused.sh
+bindsym $mod+j focus down, exec --no-startup-id ~/.local/bin/mouse-to-focused.sh
+bindsym $mod+k focus up, exec --no-startup-id ~/.local/bin/mouse-to-focused.sh
+bindsym $mod+l focus right, exec --no-startup-id ~/.local/bin/mouse-to-focused.sh
 bindsym $mod+Left focus left, exec --no-startup-id ~/.local/bin/mouse-to-focused.sh
 bindsym $mod+Right focus right, exec --no-startup-id ~/.local/bin/mouse-to-focused.sh
 # Moving windows between outputs is machine-specific — see ~/.config/i3/local.conf
