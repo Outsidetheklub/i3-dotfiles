@@ -307,7 +307,7 @@ the script either auto-detects or stays quiet — so a stranger's clone behaves 
 ```sh
 # packages
 sudo pacman -S --needed git stow
-git clone git@github.com:Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
+git clone https://github.com/Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
 cd ~/i3-dotfiles
 grep -v '^#' packages.txt | xargs sudo pacman -S --needed   # + AUR: zen-browser-bin (see below)
 
