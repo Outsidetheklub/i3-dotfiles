@@ -197,7 +197,7 @@ The full order for a fresh machine:
 ```sh
 # 1. packages (git + stow first: install.sh needs them)
 sudo pacman -S --needed git stow
-git clone git@github.com:Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
+git clone https://github.com/Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
 cd ~/i3-dotfiles
 grep -v '^#' packages.txt | xargs sudo pacman -S --needed   # + AUR: zen-browser-bin (see below)
 
