@@ -194,7 +194,7 @@ bindsym $mod+Ctrl+Print exec --no-startup-id ~/.local/bin/screenshot.sh window -
 bindsym $mod+Ctrl+Shift+Print exec --no-startup-id ~/.local/bin/screenshot.sh pick --clip-only
 
 # ── Spotify ─────────────────────────────────────────────
-bindsym $mod+m exec spotify-launcher
+bindsym $mod+m exec --no-startup-id kitty -e spotify_player
 
 # ── Power menu (rofi) ───────────────────────────────────
 bindsym $mod+Escape exec ~/.local/bin/power-menu.sh

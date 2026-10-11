@@ -102,7 +102,13 @@ lightdm-gtk-greeter
 #   GTK icon theme depends on). install.sh uses it if present; without it you
 #   get blue folders. On CachyOS it's mirrored too.
 #
-# In the official repos, but only useful with the Spotify bind ($mod+m):
+# In the official repos, but only useful with the Spotify bind ($mod+m).
+# spotify-player is the light one (Rust TUI + librespot): ~75 MB vs the official
+# client's ~1.8 GB, and it carries the repo's greyscale "oem" theme
+# (spotify-player/.config/spotify-player/theme.toml). spotify-launcher runs the
+# official CEF client and is kept as a fallback. Each needs its own Spotify dev
+# client ID — that lives in the machine-local app.toml, never tracked here.
+spotify-player
 spotify-launcher
 #
 # Deliberately NOT needed: any Nerd Font, feh (no wallpaper by default),

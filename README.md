@@ -18,6 +18,7 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `i3/.config/i3/mouse-watch.sh` | `~/.config/i3/` | watchdog that keeps libinput mouse acceleration off (games reset it) |
 | `i3status/.config/i3status/config` | `~/.config/i3status/` | bar modules: wifi, disk free, RAM used/available, clock |
 | `rofi/.config/rofi/config.rasi` | `~/.config/rofi/` | launcher — black, centered, no icons. Also used by the power menu |
+| `spotify-player/.config/spotify-player/theme.toml` | `~/.config/spotify-player/` | greyscale **“oem”** theme for the `spotify_player` TUI (`$mod+m`). ⚠️ Only the theme is tracked — `app.toml` (your client ID + prefs) stays machine-local, and this package is stowed `--no-folding` so the app can never write into the repo |
 | `local-bin/.local/bin/*` | `~/.local/bin/` | scripts: power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`), wifi menu (`$mod+Shift+n`), screenshots (`Print`, `$mod+Shift+s`), projector, mouse-to-focused, monochrome cursor builder (`mono-cursor`), the distro-neutral polkit agent (`polkit-agent`), … |
 | `gtk/.config/mimeapps.list` | `~/.config/` | file associations: **sxiv** for images, **mpv** for video, zen for links/HTML. Apps may append to this — that shows up as a real diff, which is the point |
 | `xprofile/.xprofile` | `~/.xprofile` | repaints the root window black (ghost login screen), cursor env, flatpak env, and (as a fallback) the ANSI keyboard layout |

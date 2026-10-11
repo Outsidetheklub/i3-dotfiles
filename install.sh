@@ -13,16 +13,21 @@ fi
 
 # Everything used on either machine now lives in this repo — there is no separate
 # "main dotfiles" repo any more (it was merged in here).
-PACKAGES="i3 i3status picom rofi xprofile xkb fastfetch fish gtk kitty local-bin redshift starship"
+PACKAGES="i3 i3status picom rofi xprofile xkb fastfetch fish gtk kitty local-bin redshift starship spotify-player"
 
 for pkg in $PACKAGES; do
     [ -d "$pkg" ] || { echo "missing package dir: $pkg" >&2; exit 1; }
-    # local-bin owns ~/.local/bin. Without --no-folding, stow would fold ~/.local
-    # itself into a symlink back into this repo - and then everything any app
-    # writes to ~/.local/share, ~/.local/state, ... would land in the repo and
-    # show up as stray untracked files. Keep ~/.local a real directory.
+    # local-bin and spotify-player own directories that apps also WRITE into:
+    # local-bin -> ~/.local/bin (siblings ~/.local/share, ~/.local/state stay
+    # busy), spotify-player -> ~/.config/spotify-player (the app creates its own
+    # app.toml there on first run). Without --no-folding, stow would fold the
+    # parent directory into a symlink back into this repo, and everything those
+    # apps write would land here as stray untracked files. Keep the real
+    # directories and link only the files the repo actually tracks.
     extra=""
-    [ "$pkg" = local-bin ] && extra="--no-folding"
+    case "$pkg" in
+        local-bin|spotify-player) extra="--no-folding" ;;
+    esac
     echo "==> stow $pkg"
     stow --restow $extra --target="$HOME" "$pkg"
 done

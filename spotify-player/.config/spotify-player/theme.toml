@@ -1,0 +1,50 @@
+# spotify-player theme: "oem"
+# Greyscale, no colour -- matches the OEM+ pass used across GTK/Thunar/i3bar
+# (2026-09-29): hairline-style borders, reverse-video (white block) selection,
+# everything else in tones of grey. Omitted palette entries would inherit the
+# terminal's colours, so they're pinned here to stay monochrome everywhere.
+
+[[themes]]
+name = "oem"
+
+[themes.palette]
+background = "#000000"
+foreground = "#dddddd"
+black = "#000000"
+red = "#dddddd"
+green = "#ffffff"
+yellow = "#bbbbbb"
+blue = "#cccccc"
+magenta = "#dddddd"
+cyan = "#eeeeee"
+white = "#dddddd"
+bright_black = "#767676"
+bright_red = "#ffffff"
+bright_green = "#ffffff"
+bright_yellow = "#eeeeee"
+bright_blue = "#ffffff"
+bright_magenta = "#ffffff"
+bright_cyan = "#ffffff"
+bright_white = "#ffffff"
+
+[themes.component_style]
+block_title = { fg = "White", modifiers = ["Bold"] }
+border = { fg = "BrightBlack" }
+playback_status = { fg = "White", modifiers = ["Bold"] }
+playback_track = { fg = "White", modifiers = ["Bold"] }
+playback_artists = { fg = "White" }
+playback_album = { fg = "BrightBlack" }
+playback_genres = { fg = "BrightBlack", modifiers = ["Italic"] }
+playback_metadata = { fg = "BrightBlack" }
+playback_progress_bar = { fg = "White" }
+playback_progress_bar_unfilled = { fg = "BrightBlack" }
+current_playing = { fg = "White", modifiers = ["Bold"] }
+page_desc = { fg = "White", modifiers = ["Bold"] }
+playlist_desc = { fg = "BrightBlack", modifiers = ["Dim"] }
+table_header = { fg = "White", modifiers = ["Bold"] }
+selection = { modifiers = ["Reversed"] }
+secondary_row = { fg = "BrightBlack" }
+like = { fg = "White", modifiers = ["Bold"] }
+lyrics_played = { fg = "BrightBlack" }
+lyrics_playing = { fg = "White", modifiers = ["Bold"] }
+visualization = { low = "#767676", mid = "#dddddd", high = "#ffffff" }
