@@ -213,6 +213,14 @@ bindsym $mod+Shift+e exec i3-msg exit
 bindsym $mod+Shift+p exec --no-startup-id $HOME/.local/bin/projector.sh
 bindsym $mod+Shift+x exec --no-startup-id $HOME/.local/bin/projector.sh extend
 
+# ── Screen blanking toggle (stay awake) ─────────────────
+# X11 blanking is server-wide (X screen-saver timer + DPMS), so there is no
+# per-app inhibit: this zeroes both timeouts and restores them on the next
+# press. State lives in $XDG_RUNTIME_DIR, so a logout can't leave it stuck off.
+# No daemon and nothing to install — one X call each way (that's why caffeine
+# isn't used here).
+bindsym $mod+Shift+a exec --no-startup-id $HOME/.local/bin/awake-toggle
+
 
 # ── Bar (i3bar + i3status) ───────────────────────────────
 # Status modules come from ~/.config/i3status/config. Colours are i3bar's

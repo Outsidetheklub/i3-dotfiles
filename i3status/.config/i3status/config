@@ -18,6 +18,7 @@ general {
         interval = 5
 }
 
+order += "read_file awake"
 order += "battery all"
 order += "wireless _first_"
 order += "disk /"
@@ -45,6 +46,17 @@ memory {
 
 tztime local {
         format = "%H:%M %a %d %b"
+}
+
+# Screen-awake indicator: shows "AWAKE" while ~/.local/bin/awake-toggle
+# ($mod+Shift+a) has blanking off, and nothing otherwise. Uses read_file, not
+# path_exists — path_exists can't expand "~" — and follows the symlink the
+# toggle drops in ~/.cache; once the session ends the link dangles and the
+# block hides itself, so it can never show a stale state.
+read_file awake {
+        path = "~/.cache/awake-toggle/awake"
+        format = "AWAKE"
+        format_bad = ""
 }
 
 # Laptop only. %status = Full/Charging/Discharging; hidden entirely on a machine

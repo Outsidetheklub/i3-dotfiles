@@ -413,6 +413,15 @@ Problems actually hit while installing this on real machines:
   `~/.local/bin/` — watches `/dev/input` for gamepad events, disables DPMS while
   one is active, and restores blanking once you're demonstrably back on
   keyboard/mouse. Needs the user in the `input` group (see Prerequisites).
+- **Stay awake on demand**: `$mod+Shift+a` runs `~/.local/bin/awake-toggle`
+  (`src/awake-toggle.c`, also built by `install.sh`). X11 blanking is server-wide
+  — the X screen-saver timer and DPMS — with no per-app inhibit, so the toggle
+  saves the current timeouts, zeroes them (and forces DPMS on, so an already-dark
+  screen wakes immediately), and puts them back on the next press. State lives in
+  `$XDG_RUNTIME_DIR`, so logging out can never leave blanking stuck off. This is
+  why no caffeine daemon is needed — one X call each way, nothing to install
+  (i3bar *does* have a tray, so caffeine would work; it just isn't worth a
+  daemon + package for this).
 - **`<` `>` `|` on an ANSI keyboard**: the stock `se` layout puts them on `<LSGT>`,
   the key left of Z that ANSI boards don't have. `xkb/.config/xkb/symbols/seinans`
   adds them on the 3rd level, and `lv3:caps_switch` makes **Caps Lock** that 3rd

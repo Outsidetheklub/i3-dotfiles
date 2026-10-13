@@ -93,6 +93,20 @@ if [ -f src/gamepad-idle-guard.c ]; then
         echo "   !! build failed — needs a C compiler + libX11/libXext/libXss headers (see packages.txt)" >&2
     fi
 fi
+
+# awake-toggle — keep the screen from blanking until toggled back ($mod+Shift+a).
+# Source is src/awake-toggle.c; same libs as the gamepad guard (no libXss needed).
+if [ -f src/awake-toggle.c ]; then
+    echo "==> awake-toggle (build)"
+    mkdir -p "$HOME/.local/bin"
+    if command -v cc >/dev/null 2>&1 && \
+       cc -O2 -o "$HOME/.local/bin/awake-toggle" \
+           src/awake-toggle.c -lX11 -lXext; then
+        echo "   built ~/.local/bin/awake-toggle"
+    else
+        echo "   !! build failed — needs a C compiler + libX11/libXext headers (see packages.txt)" >&2
+    fi
+fi
 echo
 # Root-owned files are not stowed (they live outside $HOME).
 echo "Done. Remaining manual steps:"
