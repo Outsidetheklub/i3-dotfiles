@@ -57,6 +57,12 @@ battery all {
         status_chr = "Charging"
         status_bat = "Discharging"
         status_full = "Full"
+        # %percentage is measured against the battery's LAST FULL capacity
+        # (state of charge -> 100 % when charged). The default is the DESIGN
+        # capacity, which caps the bar at the battery's health (~86 % right now)
+        # and looks broken if you expect 100 % when full. See `man i3status`.
+        last_full_capacity = true
+
         integer_battery_capacity = true
         low_threshold = 15
 }
