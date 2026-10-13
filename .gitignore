@@ -6,3 +6,9 @@ local-bin/.local/bin/uv
 local-bin/.local/bin/uvx
 local-bin/.local/bin/env
 local-bin/.local/bin/env.fish
+
+# Machine-specific files - per-machine, never tracked (see README + machine-backup.sh).
+i3/.config/i3/machine.env
+i3/.config/i3/display.sh
+i3/.config/i3/local.conf
+gtk/.config/gtk-3.0/bookmarks
