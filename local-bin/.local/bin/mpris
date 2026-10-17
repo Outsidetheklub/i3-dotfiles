@@ -1,0 +1,34 @@
+#!/bin/sh
+# Media-key dispatcher.
+#
+# Bare `playerctl <cmd>` sends the command to EVERY registered MPRIS player, and
+# Zen/Firefox registers one (org.mpris.MediaPlayer2.firefox.instance_*). With
+# spotify_player also running, play-pause toggled both: the browser's video and
+# the music flipped together, which looked like "pause doesn't work".
+#
+# Rule: act on whatever is actually playing; if nothing is, prefer spotify_player
+# (so pause works while it's open but idle), else fall back to the first player.
+
+cmd="${1:?usage: mpris play-pause|next|previous|play|pause|stop}"
+
+players=$(playerctl -l 2>/dev/null)
+[ -n "$players" ] || exit 0
+
+playing=""
+for p in $players; do
+    status=$(playerctl -p "$p" status 2>/dev/null)
+    if [ "$status" = "Playing" ]; then
+        playing="$p"
+        break
+    fi
+done
+
+target="$playing"
+if [ -z "$target" ]; then
+    case " $players " in
+        *" spotify_player "*) target="spotify_player" ;;
+        *) target=$(printf '%s\n' $players | head -n 1) ;;
+    esac
+fi
+
+exec playerctl -p "$target" "$cmd"
