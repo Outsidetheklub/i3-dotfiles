@@ -1,4 +1,15 @@
 #!/bin/sh
+
+# ~/.local/bin — the repo's own scripts live here (screenshot.sh, power-menu.sh,
+# the wifi/bluetooth menus, awake-toggle, mono-cursor, …). fish adds it in
+# conf.d/uv.env.fish, but GUI processes inherit the *session* env instead, and
+# nothing else set it: i3's /proc/<pid>/environ had no ~/.local/bin at all
+# (found 2026-10-18). The display manager sources this file before i3 starts,
+# so everything i3 execs gets it. i3's own binds use ~/.local/bin/<script>
+# absolute paths, so this is about the scripts (and apps) calling helpers by
+# bare name.
+export PATH="$HOME/.local/bin:$PATH"
+
 # Clear ghost SDDM screen (mainly an nvidia thing — kept for the home desktop).
 sleep 0.5
 xsetroot -solid "#000000"

@@ -21,7 +21,7 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `spotify-player/.config/spotify-player/theme.toml` | `~/.config/spotify-player/` | greyscale **“oem”** theme for the `spotify_player` TUI (`$mod+m`). ⚠️ Only the theme is tracked — `app.toml` (your client ID + prefs) stays machine-local, and this package is stowed `--no-folding` so the app can never write into the repo |
 | `local-bin/.local/bin/*` | `~/.local/bin/` | scripts: power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`), wifi menu (`$mod+Shift+n`), screenshots (`Print`, `$mod+Shift+s`), projector, mouse-to-focused, monochrome cursor builder (`mono-cursor`), the distro-neutral polkit agent (`polkit-agent`), … |
 | `gtk/.config/mimeapps.list` | `~/.config/` | file associations: **sxiv** for images, **mpv** for video, waterfox for links/HTML. Apps may append to this — that shows up as a real diff, which is the point |
-| `xprofile/.xprofile` | `~/.xprofile` | repaints the root window black (ghost login screen), cursor env, flatpak env, and (as a fallback) the ANSI keyboard layout |
+| `xprofile/.xprofile` | `~/.xprofile` | puts `~/.local/bin` on the session PATH, repaints the root window black (ghost login screen), cursor env, flatpak env, and (as a fallback) the ANSI keyboard layout |
 | `system-files/99-mouse-noaccel.conf` | `/etc/X11/xorg.conf.d/` | the actual fix for mouse acceleration (needs root) |
 | `system-files/NetworkManager/conf.d/wifi_backend.conf` | `/etc/NetworkManager/conf.d/` | wifi through iwd instead of wpa_supplicant (needs root) |
 | `system-files/lightdm/50-i3.conf` | `/etc/lightdm/lightdm.conf.d/` | LightDM seat: i3 session + GTK greeter (needs root) |
