@@ -19,7 +19,7 @@
 # ── Modifier & programs ─────────────────────────────────
 set $mod Mod4
 set $terminal kitty
-set $browser zen-browser
+set $browser waterfox 
 set $editor zed
 set $filemanager thunar
 
