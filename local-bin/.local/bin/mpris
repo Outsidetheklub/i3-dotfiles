@@ -2,9 +2,9 @@
 # Media-key dispatcher.
 #
 # Bare `playerctl <cmd>` sends the command to EVERY registered MPRIS player, and
-# Zen/Firefox registers one (org.mpris.MediaPlayer2.firefox.instance_*). With
-# spotify_player also running, play-pause toggled both: the browser's video and
-# the music flipped together, which looked like "pause doesn't work".
+# Firefox-family browsers register one (org.mpris.MediaPlayer2.firefox.instance_*).
+# With spotify_player also running, play-pause toggled both: the browser's video
+# and the music flipped together, which looked like "pause doesn't work".
 #
 # Rule: act on whatever is actually playing; if nothing is, prefer spotify_player
 # (so pause works while it's open but idle), else fall back to the first player.

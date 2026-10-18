@@ -32,6 +32,48 @@ for pkg in $PACKAGES; do
     stow --restow $extra --target="$HOME" "$pkg"
 done
 
+# Thunar / GTK sidebar bookmarks. The file is deliberately machine-local
+# (gtk/.stow-local-ignore keeps it out of the repo) because every line contains
+# an absolute $HOME path: a copy taken from another machine leaves pinned
+# folders pointing at /home/<someone-else>/Documents, which Thunar lists and
+# then refuses to open. So build it here, from the XDG user dirs — that also
+# gets localized folder names right (Dokument on a Swedish box, Documents on an
+# English one) and skips folders that don't exist. An existing file is left
+# alone unless it points at a home directory that isn't yours.
+bookmarks="${XDG_CONFIG_HOME:-$HOME/.config}/gtk-3.0/bookmarks"
+write_bookmarks=0
+if [ ! -e "$bookmarks" ]; then
+    write_bookmarks=1
+elif grep -E '^file:///home/' "$bookmarks" | grep -qvF "file://$HOME/"; then
+    write_bookmarks=1
+fi
+if [ "$write_bookmarks" -eq 1 ]; then
+    echo "==> GTK bookmarks ($bookmarks)"
+    mkdir -p "$(dirname "$bookmarks")"
+    tmp="$bookmarks.$$"
+    : > "$tmp"
+    for key in PICTURES DOWNLOAD DOCUMENTS MUSIC VIDEOS; do
+        dir=""
+        if command -v xdg-user-dir >/dev/null 2>&1; then
+            dir=$(xdg-user-dir "$key" 2>/dev/null || true)
+        fi
+        # xdg-user-dir prints $HOME for an undefined key -> skip that and
+        # any folder that simply isn't there on this machine.
+        [ -n "$dir" ] && [ "$dir" != "$HOME" ] && [ -d "$dir" ] || continue
+        # Bookmark lines are URIs, so spaces (and, on a Swedish box, å/ä/ö)
+        # need percent-encoding. python3 is already a dependency above; the
+        # sed branch is the fallback for spaces only.
+        uri=""
+        if command -v python3 >/dev/null 2>&1; then
+            uri=$(python3 -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).as_uri())' "$dir" 2>/dev/null || true)
+        fi
+        [ -n "$uri" ] || uri="file://$(printf '%s' "$dir" | sed 's/ /%20/g')"
+        printf '%s\n' "$uri" >> "$tmp"
+    done
+    # nothing to pin at all? then don't create an empty file either
+    if [ -s "$tmp" ]; then mv "$tmp" "$bookmarks"; else rm -f "$tmp"; fi
+fi
+
 # Monochrome cursor theme. Regenerates Breeze_Light as ~/.local/share/icons/
 # breeze-mono-light (every coloured cursor greyscaled) and points all six cursor
 # settings at it. Needs python (stdlib only) + breeze-cursors (the source theme).
