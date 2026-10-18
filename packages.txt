@@ -95,9 +95,9 @@ lightdm
 lightdm-gtk-greeter
 
 # Not in the official repos:
-#   zen-browser-bin (AUR) - the default browser ($mod+b). Bootstrap an AUR helper
+#   waterfox-bin (AUR) - the default browser ($mod+b). Bootstrap an AUR helper
 #   with `base-devel git` + paru/yay — the README has a 3-line recipe. On
-#   CachyOS repos it's mirrored, so there `sudo pacman -S zen-browser-bin` works.
+#   CachyOS repos it's mirrored, so there `sudo pacman -S waterfox-bin` works.
 #   papirus-folders-git (AUR) - recolours Papirus folders (the white folders the
 #   GTK icon theme depends on). install.sh uses it if present; without it you
 #   get blue folders. On CachyOS it's mirrored too.

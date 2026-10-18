@@ -20,7 +20,7 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `rofi/.config/rofi/config.rasi` | `~/.config/rofi/` | launcher — black, centered, no icons. Also used by the power menu |
 | `spotify-player/.config/spotify-player/theme.toml` | `~/.config/spotify-player/` | greyscale **“oem”** theme for the `spotify_player` TUI (`$mod+m`). ⚠️ Only the theme is tracked — `app.toml` (your client ID + prefs) stays machine-local, and this package is stowed `--no-folding` so the app can never write into the repo |
 | `local-bin/.local/bin/*` | `~/.local/bin/` | scripts: power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`), wifi menu (`$mod+Shift+n`), screenshots (`Print`, `$mod+Shift+s`), projector, mouse-to-focused, monochrome cursor builder (`mono-cursor`), the distro-neutral polkit agent (`polkit-agent`), … |
-| `gtk/.config/mimeapps.list` | `~/.config/` | file associations: **sxiv** for images, **mpv** for video, zen for links/HTML. Apps may append to this — that shows up as a real diff, which is the point |
+| `gtk/.config/mimeapps.list` | `~/.config/` | file associations: **sxiv** for images, **mpv** for video, waterfox for links/HTML. Apps may append to this — that shows up as a real diff, which is the point |
 | `xprofile/.xprofile` | `~/.xprofile` | repaints the root window black (ghost login screen), cursor env, flatpak env, and (as a fallback) the ANSI keyboard layout |
 | `system-files/99-mouse-noaccel.conf` | `/etc/X11/xorg.conf.d/` | the actual fix for mouse acceleration (needs root) |
 | `system-files/NetworkManager/conf.d/wifi_backend.conf` | `/etc/NetworkManager/conf.d/` | wifi through iwd instead of wpa_supplicant (needs root) |
@@ -71,8 +71,8 @@ The font itself comes from `ttf-terminus-nerd` (family
 `~/.local/share/fonts/terminess/` — the only per-user font file in the setup.
 
 ⚠️ **The browser's font settings are per-profile and not tracked by the repo**, so
-on a second machine set them by hand: Zen → Settings → font, or drop this in
-`~/.config/zen/<profile>/user.js` (it re-applies at every start):
+on a second machine set them by hand: Waterfox → Settings → font, or drop this in
+`~/.waterfox/<profile>/user.js` (it re-applies at every start):
 
 ```js
 user_pref("font.name.sans-serif.x-western", "Terminess Bold Mono");
@@ -144,7 +144,7 @@ ones a package list can't give you, because they're machine-specific:
 | Audio | `pipewire pipewire-pulse pipewire-alsa wireplumber` — in `packages.txt`; `pipewire-alsa` is what gives ALSA-only apps (DaVinci Resolve) sound |
 | Keyboard layout | Swedish, with `<` `>` `|` fixed for an ANSI board: `install-system.sh` drops the `seinans` variant into `/usr/share/X11/xkb` and runs `localectl set-x11-keymap seinans pc105 "" lv3:caps_switch,terminate:ctrl_alt_bksp`. That default is what X applies on every keyboard (re)connect, so no `setxkbmap` line is needed |
 | Gamepad guard | the user must be in the **`input`** group, so `gamepad-idle-guard` can read `/dev/input` and notice controller activity: `sudo usermod -aG input $USER`, then re-login |
-| AUR helper | only for two things: the browser (`zen-browser-bin`) and the folder recolour (`papirus-folders-git`) — `base-devel git` + an AUR helper (paru/yay), 3-line recipe below |
+| AUR helper | only for two things: the browser (`waterfox-bin`) and the folder recolour (`papirus-folders-git`) — `base-devel git` + an AUR helper (paru/yay), 3-line recipe below |
 | Fonts | `noto-fonts` for the bar/terminal (`monospace`) and `ttf-firacode-nerd` for GTK apps — both in `packages.txt` |
 | Cursor theme | nothing to do — `install.sh` builds the monochrome Breeze set itself. `breeze-cursors` (the source theme) + `python` are in `packages.txt` for that |
 | Icons | `papirus-icon-theme` (official) + `papirus-folders-git` (AUR) are in `packages.txt`; `install.sh` recolours the folders white, because that rewrites `/usr/share/icons` instead of reading a config file |
@@ -200,7 +200,7 @@ The full order for a fresh machine:
 sudo pacman -S --needed git stow
 git clone https://github.com/Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
 cd ~/i3-dotfiles
-grep -v '^#' packages.txt | xargs sudo pacman -S --needed   # + AUR: zen-browser-bin (see below)
+grep -v '^#' packages.txt | xargs sudo pacman -S --needed   # + AUR: waterfox-bin (see below)
 
 # 2. user files
 ./install.sh
@@ -258,15 +258,15 @@ sudo pacman -S --needed base-devel git          # build tools
 git clone https://aur.archlinux.org/paru.git /tmp/paru
 cd /tmp/paru && makepkg -si                     # no sudo: makepkg refuses to run as root
 
-paru -S zen-browser-bin papirus-folders-git        # browser + folder recolour
+paru -S waterfox-bin papirus-folders-git           # browser + folder recolour
 ```
 
 `yay` works identically — swap the clone URL and the rest is the same. Skip the
 browser if you don't want it; skip `papirus-folders-git` only if you're happy
 with blue folders.
 
-> On CachyOS repos both `paru` and `zen-browser-bin` are mirrored, so there it's
-> just `sudo pacman -S paru zen-browser-bin` (`papirus-folders-git` is mirrored
+> On CachyOS repos both `paru` and `waterfox-bin` are mirrored, so there it's
+> just `sudo pacman -S paru waterfox-bin` (`papirus-folders-git` is mirrored
 > too — `paru -S papirus-folders-git` works without building).
 
 ## Machine-specific config
@@ -310,7 +310,7 @@ the script either auto-detects or stays quiet — so a stranger's clone behaves 
 sudo pacman -S --needed git stow
 git clone https://github.com/Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
 cd ~/i3-dotfiles
-grep -v '^#' packages.txt | xargs sudo pacman -S --needed   # + AUR: zen-browser-bin (see below)
+grep -v '^#' packages.txt | xargs sudo pacman -S --needed   # + AUR: waterfox-bin (see below)
 
 # then deploy everything:
 ./install.sh
