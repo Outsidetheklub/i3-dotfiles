@@ -55,10 +55,11 @@ beyond `noto-fonts`, which comes with `packages.txt` anyway:
 - **Thunar** sets no font of its own, so its file list inherits the GTK default.
 
 History: the desktop ran **Terminus** 2026-09-29 → 2026-10-23 (and FiraCode
-before that). Those passes are gone — `ttf-terminus-nerd`, `ttf-firacode-nerd`,
-`local-bin/terminus-bold` and the generated `~/.local/share/fonts/terminess/`
-are no longer referenced by any config; `install.sh` no longer touches them, and
-they can be removed. If you ever redo a Nerd-Font pass: a generated family has to
+before that). Those passes are gone for good: `ttf-terminus-nerd`,
+`ttf-firacode-nerd` and the generated `~/.local/share/fonts/terminess/` are
+uninstalled, and `local-bin/terminus-bold` (the script that generated the
+browser's Bold family) was deleted on 2026-10-23 — nothing in the repo asks for a
+Nerd Font any more. If a Nerd-Font pass ever comes back: a generated family has to
 be a real font file — Firefox resolves a requested family against fontconfig's
 **list of installed families**, so an alias in `~/.config/fontconfig/fonts.conf`
 is silently ignored (`target="pattern"` and `target="font"` both tried,

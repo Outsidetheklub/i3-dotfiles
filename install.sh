@@ -108,9 +108,8 @@ else
 fi
 
 # Terminus Bold (local-bin/terminus-bold) used to be built here for the browser's
-# font prefs. Since 2026-10-23 the desktop runs stock Noto Sans / Noto Sans Mono,
-# so nothing asks for that generated family and the step is gone. The script is
-# still in local-bin/ if a Nerd-Font pass ever comes back.
+# font prefs. Since 2026-10-23 the desktop runs stock Noto Sans / Noto Sans Mono and
+# the script is gone too, so there is no font step at all.
 
 # gamepad-idle-guard — keep the display awake while a gamepad is in use (X11 only
 # counts keyboard/mouse as activity, so DPMS blanked mid-game). The source is

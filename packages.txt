@@ -45,8 +45,8 @@ python
 # config (removed from this list 2026-10-23).
 fish
 noto-fonts
-# uv — Astral's Python resolver, used as a tool runner (e.g. local-bin/terminus-bold,
-# nano-pdf). Not needed by the desktop itself.
+# uv — Astral's Python resolver, used as a tool runner (e.g. nano-pdf). Not
+# needed by the desktop itself.
 uv
 
 # Terminal niceties the repo ships configs for
