@@ -54,6 +54,14 @@ beyond `noto-fonts`, which comes with `packages.txt` anyway:
   the GTK default) and `font:` in `rofi/` (12pt).
 - **Thunar** sets no font of its own, so its file list inherits the GTK default.
 
+**Monospace is rendered crisp, not antialiased** — `fontconfig/.config/fontconfig/fonts.conf`
+turns antialias off and hinting to `hintfull` for `Noto Sans Mono` only. Reason:
+stock antialiased Noto at bar/terminal sizes read as "blurry" (~195 grey levels
+per bar crop) compared to Terminus's pixel-aligned stems before it. GTK widgets,
+rofi and the browser keep normal antialiased text. It has to be a fontconfig rule,
+not `~/.Xresources` — i3bar/Pango ignore `Xft.*` resources (proven 2026-10-23).
+Edit + `fc-cache -f`, then restart the app.
+
 History: the desktop ran **Terminus** 2026-09-29 → 2026-10-23 (and FiraCode
 before that). Those passes are gone for good: `ttf-terminus-nerd`,
 `ttf-firacode-nerd` and the generated `~/.local/share/fonts/terminess/` are
