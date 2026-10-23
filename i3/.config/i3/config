@@ -230,7 +230,9 @@ bar {
     position bottom
     # Same family as the WM font above (2026-10-23). No Bold trick any more:
     # that existed only because Terminus Regular's stems were 1px.
-    font pango:Noto Sans Mono 11
+    # 12pt: one step up from the WM/terminal 11 (his request) — the bar is read
+    # at a glance, so it gets a touch more size than the rest.
+    font pango:Noto Sans Mono 12
     workspace_buttons yes
     strip_workspace_numbers no
     binding_mode_indicator yes
