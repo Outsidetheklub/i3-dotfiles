@@ -381,7 +381,12 @@ Problems actually hit while installing this on real machines:
 - **Autostart is duplicate-guarded**: `redshift` is started with
   `pgrep -x <name> || <name>`, and `mouse-watch.sh` has a `flock` singleton, so
   `$mod+Shift+r` brings back anything that died without stacking up copies.
-  No compositor is run at all (picom was dropped on 2026-09-28).
+  No compositor runs **on this desktop** — picom was dropped on 2026-09-28, brought
+  back on 2026-09-30 for X11 VSync (`f1645b0`), then made opt-in per machine
+  (`dc206b4`, `PICOM_VSYNC=1` in `machine.env`). The NVIDIA box leaves it unset:
+  the driver's composition pipeline already gives VSync there. Machines with no
+  other VSync source set `PICOM_VSYNC=1` (and need the package — it's in
+  `packages.txt`/`install.sh`, but was never reinstalled here).
 - **The bar is at the bottom** (`position bottom`), with a black/grey `colors`
   block because i3's stock blue for the focused workspace doesn't fit.
 - **No Nerd Fonts are required** — the power menu uses plain words, so default
