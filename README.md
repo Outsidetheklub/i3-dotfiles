@@ -129,7 +129,7 @@ ones a package list can't give you, because they're machine-specific:
 | Keyboard layout | Swedish, with `<` `>` `|` fixed for an ANSI board: `install-system.sh` drops the `seinans` variant into `/usr/share/X11/xkb` and runs `localectl set-x11-keymap seinans pc105 "" lv3:caps_switch,terminate:ctrl_alt_bksp`. That default is what X applies on every keyboard (re)connect, so no `setxkbmap` line is needed |
 | Gamepad guard | the user must be in the **`input`** group, so `gamepad-idle-guard` can read `/dev/input` and notice controller activity: `sudo usermod -aG input $USER`, then re-login |
 | AUR helper | only for two things: the browser (`waterfox-bin`) and the folder recolour (`papirus-folders-git`) — `base-devel git` + an AUR helper (paru/yay), 3-line recipe below |
-| Fonts | `noto-fonts` for the bar/terminal (`monospace`) and `ttf-firacode-nerd` for GTK apps — both in `packages.txt` |
+| Fonts | nothing extra — `noto-fonts` (in `packages.txt`) provides both faces the setup asks for: **Noto Sans** for GTK/Thunar/rofi and **Noto Sans Mono** for kitty + the i3bar |
 | Cursor theme | nothing to do — `install.sh` builds the monochrome Breeze set itself. `breeze-cursors` (the source theme) + `python` are in `packages.txt` for that |
 | Icons | `papirus-icon-theme` (official) + `papirus-folders-git` (AUR) are in `packages.txt`; `install.sh` recolours the folders white, because that rewrites `/usr/share/icons` instead of reading a config file |
 | In a VM | no NVIDIA driver; use `mesa` + the VM's video driver (`qxl` or virtio-gpu) and, for QEMU/SPICE, `spice-vdagent`. Monitor names differ too — the VM X output is usually `Virtual-1`, so edit `local.conf` |
