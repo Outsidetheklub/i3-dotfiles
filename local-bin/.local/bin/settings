@@ -1,0 +1,558 @@
+#!/usr/bin/env python3
+"""settings - one place for everything i3 does not give you a GUI for.
+
+Stock i3 + QOL: every item here either edits a plain config file or launches a
+tool that is already installed. No daemons, no new packages.
+
+CLI:
+  settings                          rofi menu
+  settings list                     categories + current default app
+  settings show <category>
+  settings set <category> <desktop-id> [--dry-run]
+  settings appearance list [kind]
+  settings appearance set <kind> <value>
+"""
+
+from __future__ import annotations
+
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+HOME = Path.home()
+CONFIG = HOME / ".config"
+MIMEAPPS = CONFIG / "mimeapps.list"
+GTK3 = CONFIG / "gtk-3.0" / "settings.ini"
+GTK4 = CONFIG / "gtk-4.0" / "settings.ini"
+BACKUPS = HOME / ".local/share/settings-backups"
+I3_CONFIG = CONFIG / "i3" / "config"
+I3_LOCAL = CONFIG / "i3" / "local.conf"
+
+CATEGORIES = {
+    "Web browser": ["x-scheme-handler/http", "x-scheme-handler/https", "text/html", "application/xhtml+xml"],
+    "File manager": ["inode/directory"],
+    "Images": ["image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml", "image/tiff", "image/bmp"],
+    "Video": ["video/mp4", "video/x-matroska", "video/quicktime", "video/webm", "video/x-msvideo"],
+    "Audio": ["audio/mpeg", "audio/x-flac", "audio/ogg", "audio/x-wav", "audio/mp4"],
+    "PDF": ["application/pdf"],
+    "Text editor": ["text/plain", "text/markdown"],
+    "Archives": ["application/zip", "application/x-compressed-tar", "application/x-7z-compressed", "application/x-rar-compressed", "application/gzip"],
+    "Torrents": ["application/x-bittorrent"],
+}
+
+DESKTOP_DIRS = [
+    Path("/usr/share/applications"),
+    HOME / ".local/share/applications",
+    Path("/var/lib/flatpak/exports/share/applications"),
+    HOME / ".local/share/flatpak/exports/share/applications",
+]
+
+THEME_DIRS = [Path("/usr/share/themes"), HOME / ".themes", HOME / ".local/share/themes"]
+ICON_DIRS = [Path("/usr/share/icons"), HOME / ".icons", HOME / ".local/share/icons"]
+
+
+def have(cmd: str) -> bool:
+    return shutil.which(cmd) is not None
+
+
+def die(msg: str) -> None:
+    print(f"settings: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+# ── desktop entries ───────────────────────────────────────────────────────────
+
+def parse_desktop(path: Path) -> dict:
+    meta: dict[str, str] = {}
+    section = None
+    try:
+        text = path.read_text(errors="replace")
+    except OSError:
+        return meta
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("["):
+            section = line.strip("[]")
+            continue
+        if section != "Desktop Entry" or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        meta.setdefault(key.strip(), value.strip())
+    return meta
+
+
+def desktop_entries() -> list[tuple[str, dict]]:
+    out, seen = [], set()
+    for directory in DESKTOP_DIRS:
+        if not directory.is_dir():
+            continue
+        for path in sorted(directory.glob("*.desktop")):
+            if path.name in seen:
+                continue
+            seen.add(path.name)
+            meta = parse_desktop(path)
+            if not meta:
+                continue
+            if meta.get("NoDisplay", "").lower() == "true" or meta.get("Hidden", "").lower() == "true":
+                continue
+            out.append((path.name, meta))
+    return out
+
+
+def app_name(meta: dict, fallback: str) -> str:
+    return meta.get("Name") or fallback
+
+
+def candidates(category: str, entries: list[tuple[str, dict]]) -> list[tuple[str, dict]]:
+    wanted = set(CATEGORIES[category])
+    picked = []
+    for desktop_id, meta in entries:
+        mimes = {m for m in meta.get("MimeType", "").split(";") if m}
+        if mimes & wanted:
+            picked.append((desktop_id, meta))
+    picked.sort(key=lambda item: app_name(item[1], item[0]).lower())
+    return picked
+
+
+def current_defaults() -> dict[str, str]:
+    defaults: dict[str, str] = {}
+    if not MIMEAPPS.exists():
+        return defaults
+    section = None
+    for line in MIMEAPPS.read_text(errors="replace").splitlines():
+        line = line.strip()
+        if line.startswith("["):
+            section = line.strip("[]")
+            continue
+        if section == "Default Applications" and "=" in line:
+            mime, value = line.split("=", 1)
+            first = value.split(";")[0].strip()
+            if first:
+                defaults[mime.strip()] = first
+    return defaults
+
+
+def category_default(category: str, defaults: dict[str, str] | None = None) -> str:
+    defaults = defaults if defaults is not None else current_defaults()
+    for mime in CATEGORIES[category]:
+        if mime in defaults:
+            return defaults[mime]
+    return ""
+
+
+# ── mimeapps.list editing ────────────────────────────────────────────────────
+
+def _sections(lines: list[str]) -> list[tuple[str | None, int, int]]:
+    """(name, start, end) for each section; start is index after the header."""
+    found = []
+    current, start = None, 0
+    for i, line in enumerate(lines):
+        if line.strip().startswith("[") and line.strip().endswith("]"):
+            if current is not None:
+                found.append((current, start, i))
+            current = line.strip()[1:-1]
+            start = i + 1
+    if current is not None:
+        found.append((current, start, len(lines)))
+    return found
+
+
+def _rewrite(lines: list[str], section: str, mime: str, value: str) -> list[str]:
+    spans = _sections(lines)
+    span = next((s for s in spans if s[0] == section), None)
+    if span is None:
+        if lines and lines[-1].strip():
+            lines = lines + [""]
+        lines = lines + [f"[{section}]", f"{mime}={value}"]
+        return lines
+    _, start, end = span
+    for i in range(start, end):
+        if lines[i].strip().startswith(mime + "="):
+            lines[i] = f"{mime}={value}"
+            return lines
+    lines.insert(end, f"{mime}={value}")
+    return lines
+
+
+def set_default(category: str, desktop_id: str, dry_run: bool = False) -> str:
+    if category not in CATEGORIES:
+        die(f"unknown category {category!r}; try: {', '.join(CATEGORIES)}")
+    if not MIMEAPPS.exists():
+        die(f"{MIMEAPPS} does not exist")
+    lines = MIMEAPPS.read_text(errors="replace").splitlines()
+    for mime in CATEGORIES[category]:
+        lines = _rewrite(lines, "Default Applications", mime, desktop_id)
+        span = next((s for s in _sections(lines) if s[0] == "Added Associations"), None)
+        existing = ""
+        if span:
+            _, start, end = span
+            for i in range(start, end):
+                if lines[i].strip().startswith(mime + "="):
+                    existing = lines[i].split("=", 1)[1].strip()
+                    break
+        apps = [a for a in existing.split(";") if a and a != desktop_id]
+        joined = ";".join([desktop_id] + apps) + ";"
+        lines = _rewrite(lines, "Added Associations", mime, joined)
+    new_text = "\n".join(lines) + "\n"
+    old_text = MIMEAPPS.read_text(errors="replace")
+    if dry_run:
+        print(new_text)
+        return "dry-run"
+    if new_text == old_text:
+        return "unchanged"
+    BACKUPS.mkdir(parents=True, exist_ok=True)
+    backup = BACKUPS / f"mimeapps-{time.strftime('%Y%m%d-%H%M%S')}.list"
+    shutil.copy2(MIMEAPPS, backup)
+    MIMEAPPS.write_text(new_text)
+    return f"wrote (backup: {backup})"
+
+
+def verify(category: str) -> list[str]:
+    out = []
+    for mime in CATEGORIES[category]:
+        if not have("xdg-mime"):
+            break
+        res = subprocess.run(["xdg-mime", "query", "default", mime], capture_output=True, text=True)
+        out.append(f"{mime} -> {res.stdout.strip() or '(none)'}")
+    return out
+
+
+# ── gtk appearance ───────────────────────────────────────────────────────────
+
+def _dirs_with(base: list[Path], marker: str) -> list[str]:
+    names: set[str] = set()
+    for directory in base:
+        if not directory.is_dir():
+            continue
+        for child in directory.iterdir():
+            if child.is_dir() and (child / marker).exists():
+                names.add(child.name)
+    return sorted(names)
+
+
+def themes() -> list[str]:
+    return _dirs_with(THEME_DIRS, "gtk-3.0")
+
+
+def icons() -> list[str]:
+    return _dirs_with(ICON_DIRS, "index.theme")
+
+
+def cursors() -> list[str]:
+    return _dirs_with(ICON_DIRS, "cursors")
+
+
+def font_families() -> list[str]:
+    if not have("fc-list"):
+        return []
+    res = subprocess.run(["fc-list", ":", "family"], capture_output=True, text=True)
+    fams = set()
+    for line in res.stdout.splitlines():
+        for fam in line.split(","):
+            fam = fam.strip()
+            if fam:
+                fams.add(fam)
+    return sorted(fams, key=str.lower)
+
+
+def read_ini(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    if not path.exists():
+        return values
+    for line in path.read_text(errors="replace").splitlines():
+        if "=" in line and not line.strip().startswith("#"):
+            key, value = line.split("=", 1)
+            values[key.strip()] = value.strip()
+    return values
+
+
+def write_ini_key(path: Path, key: str, value: str) -> None:
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"[Settings]\n{key}={value}\n")
+        return
+    lines = path.read_text(errors="replace").splitlines()
+    out, replaced = [], False
+    for line in lines:
+        if line.strip().startswith(key + "="):
+            out.append(f"{key}={value}")
+            replaced = True
+        else:
+            out.append(line)
+    if not replaced:
+        out.append(f"{key}={value}")
+    path.write_text("\n".join(out) + "\n")
+
+
+def set_appearance(kind: str, value: str) -> list[str]:
+    keys = {
+        "theme": "gtk-theme-name",
+        "icons": "gtk-icon-theme-name",
+        "cursor": "gtk-cursor-theme-name",
+        "font": "gtk-font-name",
+    }
+    if kind not in keys:
+        die(f"unknown appearance kind {kind!r}; use: {', '.join(keys)}")
+    if kind == "font":
+        current = read_ini(GTK3).get("gtk-font-name", "Noto Sans 10")
+        size = current.rsplit(" ", 1)[-1]
+        size = size if re.fullmatch(r"\d+(\.\d+)?", size) else "10"
+        value = f"{value} {size}"
+    changed = []
+    for path in (GTK3, GTK4):
+        write_ini_key(path, keys[kind], value)
+        changed.append(str(path))
+    return changed
+
+
+# ── ui helpers ───────────────────────────────────────────────────────────────
+
+def menu(prompt: str, items: list[str], mesg: str | None = None) -> str | None:
+    cmd = ["rofi", "-dmenu", "-i", "-p", prompt]
+    if mesg:
+        cmd += ["-mesg", mesg]
+    try:
+        proc = subprocess.run(cmd, input="\n".join(items), text=True, capture_output=True)
+    except FileNotFoundError:
+        die("rofi is not installed")
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip() or None
+
+
+def msgbox(text: str) -> None:
+    if have("rofi"):
+        subprocess.run(["rofi", "-e", text])
+    else:
+        print(text)
+
+
+def run(cmd: list[str]) -> None:
+    try:
+        subprocess.Popen(cmd, start_new_session=True,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except FileNotFoundError:
+        msgbox(f"Not installed: {cmd[0]}")
+
+
+# ── menu actions ─────────────────────────────────────────────────────────────
+
+def apps_menu() -> None:
+    defaults = current_defaults()
+    entries = desktop_entries()
+    labels = []
+    for cat in CATEGORIES:
+        cur = category_default(cat, defaults)
+        labels.append(f"{cat}\t{cur or 'unset'}")
+    pick = menu("Default app", labels, "Pick a category, then an application")
+    if not pick:
+        return
+    cat = pick.split("\t", 1)[0]
+    apps = candidates(cat, entries)
+    if not apps:
+        msgbox(f"No installed app claims {cat}")
+        return
+    rows = [f"{app_name(meta, did)}\t{did}" for did, meta in apps]
+    choice = menu(f"Default: {cat}", rows, f"Currently: {category_default(cat)}")
+    if not choice:
+        return
+    desktop_id = choice.split("\t", 1)[1]
+    result = set_default(cat, desktop_id)
+    msgbox(f"{cat} -> {desktop_id}\n{result}")
+
+
+def appearance_menu() -> None:
+    pick = menu("Appearance", ["Theme", "Icons", "Cursor", "Font"])
+    if not pick:
+        return
+    kind = pick.lower()
+    if kind == "font":
+        options = font_families()
+        current = read_ini(GTK3).get("gtk-font-name", "")
+    elif kind == "theme":
+        options, current = themes(), read_ini(GTK3).get("gtk-theme-name", "")
+    elif kind == "icons":
+        options, current = icons(), read_ini(GTK3).get("gtk-icon-theme-name", "")
+    else:
+        options, current = cursors(), read_ini(GTK3).get("gtk-cursor-theme-name", "")
+    if not options:
+        msgbox(f"No {kind} options found")
+        return
+    choice = menu(pick, options, f"Current: {current or 'unset'}")
+    if not choice:
+        return
+    changed = set_appearance(kind, choice)
+    msgbox(f"{pick}: {choice}\nWritten to:\n" + "\n".join(changed) +
+           "\n\nAlready-running apps keep the old value until restarted.")
+
+
+def display_menu() -> None:
+    items = ["Display settings (xfce4)", "Projector: auto-detect", "Projector: extend", "Show xrandr state"]
+    pick = menu("Displays", items)
+    if not pick:
+        return
+    if pick.startswith("Display settings"):
+        if have("xfce4-display-settings"):
+            run(["xfce4-display-settings"])
+        else:
+            msgbox("xfce4-display-settings not installed")
+    elif pick.startswith("Projector: auto"):
+        run([str(HOME / ".local/bin/projector.sh")])
+    elif pick.startswith("Projector: extend"):
+        run([str(HOME / ".local/bin/projector.sh"), "extend"])
+    else:
+        res = subprocess.run(["xrandr", "--query"], capture_output=True, text=True)
+        msgbox(res.stdout or "xrandr not available")
+
+
+def i3_menu() -> None:
+    pick = menu("i3", ["Edit ~/.config/i3/config", "Edit local.conf (machine-specific)",
+                       "Reload i3", "Restart i3", "Validate config"])
+    if not pick:
+        return
+    if pick.startswith("Edit ~/.config/i3/config"):
+        run(["zed", str(I3_CONFIG)])
+    elif pick.startswith("Edit local.conf"):
+        run(["zed", str(I3_LOCAL)])
+    elif pick == "Reload i3":
+        res = subprocess.run(["i3-msg", "reload"], capture_output=True, text=True)
+        msgbox(res.stdout.strip() or res.stderr.strip())
+    elif pick == "Restart i3":
+        res = subprocess.run(["i3-msg", "restart"], capture_output=True, text=True)
+        msgbox(res.stdout.strip() or res.stderr.strip())
+    else:
+        res = subprocess.run(["i3", "-C", "-c", str(I3_CONFIG)], capture_output=True, text=True)
+        msgbox((res.stdout + res.stderr).strip() or f"OK (exit {res.returncode})")
+
+
+def about() -> None:
+    def out(cmd: list[str]) -> str:
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            return res.stdout.strip().splitlines()[0] if res.stdout.strip() else "?"
+        except FileNotFoundError:
+            return "(missing)"
+
+    gtk = read_ini(GTK3)
+    bar_font = ""
+    try:
+        bar_font = re.search(r"^\s*font (.+)$", I3_CONFIG.read_text(), re.M)
+        bar_font = bar_font.group(1) if bar_font else "?"
+    except OSError:
+        bar_font = "?"
+    browser = category_default("Web browser")
+    lines = [
+        f"i3: {out(['i3', '--version'])}",
+        f"GTK theme: {gtk.get('gtk-theme-name', '?')}",
+        f"GTK font: {gtk.get('gtk-font-name', '?')}",
+        f"Icons: {gtk.get('gtk-icon-theme-name', '?')}",
+        f"Cursor: {gtk.get('gtk-cursor-theme-name', '?')}",
+        f"i3/bar font: {bar_font}",
+        f"Browser: {browser or 'unset'}",
+        f"Wallpaper: {out(['xwallpaper', '--help']) if have('xwallpaper') else 'startup.sh'}",
+        "",
+        "Everything here is a plain config file under ~/.config.",
+    ]
+    msgbox("\n".join(lines))
+
+
+ACTIONS = {
+    "Default applications": apps_menu,
+    "Appearance (GTK)": appearance_menu,
+    "Displays": display_menu,
+    "Audio": lambda: run(["pavucontrol"]),
+    "Network": lambda: run([str(HOME / ".local/bin/network-rofi.sh")]),
+    "Network connections (advanced)": lambda: run(["nm-connection-editor"]),
+    "Bluetooth": lambda: run([str(HOME / ".local/bin/bluetooth-rofi.sh")]),
+    "Power / session": lambda: run([str(HOME / ".local/bin/power-menu.sh")]),
+    "i3 config": i3_menu,
+    "Screenshots folder": lambda: run(["thunar", str(HOME / "Pictures/Screenshots")]),
+    "About this setup": about,
+}
+
+
+def main_menu() -> None:
+    items = list(ACTIONS)
+    pick = menu("Settings", items, "Stock i3 + QOL\nEnter = open, Esc = close")
+    if not pick:
+        return
+    action = ACTIONS.get(pick)
+    if action:
+        action()
+
+
+# ── cli ──────────────────────────────────────────────────────────────────────
+
+def cli(argv: list[str]) -> None:
+    if not argv:
+        main_menu()
+        return
+    cmd = argv[0]
+    if cmd in ("-h", "--help", "help"):
+        print(__doc__)
+        return
+    if cmd == "list":
+        defaults = current_defaults()
+        for cat in CATEGORIES:
+            print(f"{cat:14s} {category_default(cat, defaults) or '(unset)'}")
+        return
+    if cmd == "show":
+        if len(argv) < 2:
+            die("show needs a category")
+        cat = match_category(argv[1])
+        print(category_default(cat) or "(unset)")
+        return
+    if cmd == "set":
+        if len(argv) < 3:
+            die("set needs <category> <desktop-id>")
+        cat = match_category(argv[1])
+        result = set_default(cat, argv[2], dry_run="--dry-run" in argv)
+        print(result)
+        if "--dry-run" not in argv:
+            for line in verify(cat):
+                print(line)
+        return
+    if cmd == "appearance":
+        rest = argv[1:]
+        if not rest or rest[0] == "list":
+            kind = rest[1] if len(rest) > 1 else None
+            if kind == "font":
+                print("\n".join(font_families()))
+            elif kind == "theme":
+                print("\n".join(themes()))
+            elif kind == "icons":
+                print("\n".join(icons()))
+            elif kind == "cursor":
+                print("\n".join(cursors()))
+            else:
+                print(f"theme {read_ini(GTK3).get('gtk-theme-name','?')}")
+                print(f"icons {read_ini(GTK3).get('gtk-icon-theme-name','?')}")
+                print(f"cursor {read_ini(GTK3).get('gtk-cursor-theme-name','?')}")
+                print(f"font {read_ini(GTK3).get('gtk-font-name','?')}")
+            return
+        if rest[0] == "set" and len(rest) >= 3:
+            for path in set_appearance(rest[1], " ".join(rest[2:])):
+                print(path)
+            return
+        die("usage: settings appearance [list [kind] | set <kind> <value>]")
+    die(f"unknown command {cmd!r}")
+
+
+def match_category(text: str) -> str:
+    for cat in CATEGORIES:
+        if cat.lower() == text.lower():
+            return cat
+    partial = [cat for cat in CATEGORIES if text.lower() in cat.lower()]
+    if len(partial) == 1:
+        return partial[0]
+    die(f"no unique category matching {text!r}")
+
+
+if __name__ == "__main__":
+    cli(sys.argv[1:])

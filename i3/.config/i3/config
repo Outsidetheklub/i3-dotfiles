@@ -196,6 +196,11 @@ bindsym $mod+Ctrl+Shift+Print exec --no-startup-id ~/.local/bin/screenshot.sh pi
 # ── Spotify ─────────────────────────────────────────────
 bindsym $mod+m exec --no-startup-id kitty -e spotify_player
 
+# ── Settings hub (rofi) ─────────────────────────────────
+# Default apps, GTK appearance, displays, audio, network, bluetooth, i3 config.
+# Script: ~/.local/bin/settings (local-bin/ in this repo). CLI: settings list
+bindsym $mod+Shift+d exec --no-startup-id ~/.local/bin/settings
+
 # ── Power menu (rofi) ───────────────────────────────────
 bindsym $mod+Escape exec ~/.local/bin/power-menu.sh
 

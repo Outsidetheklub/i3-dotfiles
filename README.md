@@ -19,7 +19,7 @@ so the same repo works on the desktop and the laptop. Templates are in `examples
 | `i3status/.config/i3status/config` | `~/.config/i3status/` | bar modules: wifi, disk free, RAM used/available, clock |
 | `rofi/.config/rofi/config.rasi` | `~/.config/rofi/` | launcher — black, centered, no icons. Also used by the power menu |
 | `spotify-player/.config/spotify-player/theme.toml` | `~/.config/spotify-player/` | greyscale **“oem”** theme for the `spotify_player` TUI (`$mod+m`). ⚠️ Only the theme is tracked — `app.toml` (your client ID + prefs) stays machine-local, and this package is stowed `--no-folding` so the app can never write into the repo |
-| `local-bin/.local/bin/*` | `~/.local/bin/` | scripts: power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`), wifi menu (`$mod+Shift+n`), screenshots (`Print`, `$mod+Shift+s`), projector, mouse-to-focused, monochrome cursor builder (`mono-cursor`), the distro-neutral polkit agent (`polkit-agent`), … |
+| `local-bin/.local/bin/*` | `~/.local/bin/` | scripts: settings hub (`settings`, `$mod+Shift+d`), power menu (`$mod+Escape`), Bluetooth menu (`$mod+Shift+b`), wifi menu (`$mod+Shift+n`), screenshots (`Print`, `$mod+Shift+s`), projector, mouse-to-focused, monochrome cursor builder (`mono-cursor`), the distro-neutral polkit agent (`polkit-agent`), … |
 | `gtk/.config/mimeapps.list` | `~/.config/` | file associations: **sxiv** for images, **mpv** for video, waterfox for links/HTML. Apps may append to this — that shows up as a real diff, which is the point |
 | `xprofile/.xprofile` | `~/.xprofile` | puts `~/.local/bin` on the session PATH, repaints the root window black (ghost login screen), cursor env, flatpak env, and (as a fallback) the ANSI keyboard layout |
 | `system-files/99-mouse-noaccel.conf` | `/etc/X11/xorg.conf.d/` | the actual fix for mouse acceleration (needs root) |
@@ -336,6 +336,7 @@ Laptop extras worth adding:
 | `$mod+e` / `$mod+p` | Thunar / pavucontrol |
 | `$mod+Shift+b` | Bluetooth menu (rofi → bluetoothctl) |
 | `$mod+space` / `$mod+Escape` | rofi launcher / rofi power menu |
+| `$mod+Shift+d` | settings hub (rofi): default apps, GTK appearance, displays, audio, network, bluetooth, i3 config. Also in the launcher — type `settings` after `$mod+space` |
 | `$mod+h/j/k/l` | focus (arrows too) |
 | `$mod+Shift+h/j/k/l` | move window |
 | `$mod+1..0` | workspace 1–10 (`$mod+Shift+1..0` moves container) |

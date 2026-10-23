@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Settings
+GenericName=System Settings
+Comment=Stock i3 + QOL: default apps, appearance, displays, network
+Exec=settings
+Icon=org.xfce.settings.manager
+Terminal=false
+Categories=Settings;
+Keywords=settings;preferences;config;default;apps;theme;fonts;appearance;
