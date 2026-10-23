@@ -45,44 +45,27 @@ repo while the i3 config lived in another.
 
 ### Fonts
 
-The desktop is **Terminus** (`font_family` in `kitty/`, `font pango:…` in
-`i3/`, `font:` in `rofi/`, `gtk-font-name` in `gtk/`, `font-family` in
-`gtk/.config/gtk-3.0/thunar.css`). It renders smaller than Noto/FiraCode at
-equal pt, so every size here is ~2pt larger than the font it replaced.
+The desktop uses the **stock Noto faces** (since 2026-10-23) — nothing to install
+beyond `noto-fonts`, which comes with `packages.txt` anyway:
 
-⚠️ Terminus Regular's stems are exactly **1px** — crisp at Thunar's 12pt, thin
-at browser text sizes. So two places ask for the Bold face instead: the **i3bar**
-(`font pango:Terminess Nerd Font Mono Bold 13`, since pango understands style
-keywords) and the **browser**, whose four font prefs point at
-**"Terminess Bold Mono"**.
+- **Noto Sans Mono** where a monospace face belongs: `font_family` in `kitty/`
+  and both `font pango:…` lines in `i3/` (WM + bar), at 11pt.
+- **Noto Sans** for widgets: `gtk-font-name` in `gtk-3.0/` + `gtk-4.0/` (10pt,
+  the GTK default) and `font:` in `rofi/` (12pt).
+- **Thunar** sets no font of its own, so its file list inherits the GTK default.
 
-That name is real, but *generated*: `local-bin/.local/bin/terminus-bold` writes a
-renamed copy of the Bold TTF (`TerminessBoldMono-Regular.ttf`, family
-"Terminess Bold Mono", style Regular — same glyphs, new name table). ⚠️ It has to
-be a real font: Firefox resolves a requested family against fontconfig's **list of
-installed families**, so the obvious shortcut — an alias in
-`~/.config/fontconfig/fonts.conf` — is silently ignored by the browser (pattern
-rewrites never make it into that list; tried both `target="pattern"` and
-`target="font"` on 2026-09-29, no dice). Re-run `terminus-bold` after updating
-Terminus; `install.sh` does it for you.
+History: the desktop ran **Terminus** 2026-09-29 → 2026-10-23 (and FiraCode
+before that). Those passes are gone — `ttf-terminus-nerd`, `ttf-firacode-nerd`,
+`local-bin/terminus-bold` and the generated `~/.local/share/fonts/terminess/`
+are no longer referenced by any config; `install.sh` no longer touches them, and
+they can be removed. If you ever redo a Nerd-Font pass: a generated family has to
+be a real font file — Firefox resolves a requested family against fontconfig's
+**list of installed families**, so an alias in `~/.config/fontconfig/fonts.conf`
+is silently ignored (`target="pattern"` and `target="font"` both tried,
+2026-09-29).
 
-The font itself comes from `ttf-terminus-nerd` (family
-`Terminess Nerd Font Mono`); `terminus-bold` writes the generated Bold family to
-`~/.local/share/fonts/terminess/` — the only per-user font file in the setup.
-
-⚠️ **The browser's font settings are per-profile and not tracked by the repo**, so
-on a second machine set them by hand: Waterfox → Settings → font, or drop this in
-`~/.waterfox/<profile>/user.js` (it re-applies at every start):
-
-```js
-user_pref("font.name.sans-serif.x-western", "Terminess Bold Mono");
-user_pref("font.name.serif.x-western",      "Terminess Bold Mono");
-user_pref("font.name.monospace.x-western",  "Terminess Bold Mono");
-user_pref("theme.custom_uifont.custom",     "Terminess Bold Mono");
-```
-
-Sanity check the family is visible to apps (`fc-match` is not enough — it resolves
-aliases a browser will ignore): `fc-list :family="Terminess Bold Mono"`.
+Browser font prefs are **per-profile and untracked** — Settings → font, or
+`user.js` in the profile.
 
 ### Cursor theme
 

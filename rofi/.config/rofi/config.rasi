@@ -1,8 +1,8 @@
-/* Font: Terminus, matching the rest of the desktop (see kitty.conf).
-   rofi's own default would be `mono 12`. */
+/* Font: Noto Sans 12 (2026-10-23) — the default UI face, at the size rofi
+   used before the Terminus pass. */
 
 configuration {
-    font: "Terminess Nerd Font Mono 13";
+    font: "Noto Sans 12";
     modi: "drun,run";
     show-icons: false;
     drun-display-format: "{name}";

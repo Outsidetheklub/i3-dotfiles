@@ -39,17 +39,14 @@ papirus-icon-theme
 # Breeze cursor set in monochrome and activates it. install.sh runs it at the end.
 python
 
-# Shell + fonts. Terminus is the desktop font: the terminal, the bar, rofi, the
-# GTK default and Thunar all ask for it (fontconfig resolves it smaller than the
-# fonts it replaced, so the sizes are ~2pt larger). ttf-terminus-nerd is the
-# nerd-fonts patched Terminus, family "Terminess Nerd Font Mono" — same thing as
-# the Terminus.zip from nerd-fonts, but from a package. local-bin/terminus-bold
-# derives the Bold-only family the browser asks for (needs uv, below).
+# Shell + fonts. The desktop uses the stock Noto faces (2026-10-23): Noto Sans
+# for GTK/Thunar/rofi, Noto Sans Mono for kitty and the i3bar. noto-fonts ships
+# the whole Noto Sans family; FiraCode/Terminus are no longer referenced by any
+# config (removed from this list 2026-10-23).
 fish
 noto-fonts
-ttf-firacode-nerd
-ttf-terminus-nerd
-# uv — used by local-bin/terminus-bold to run fontTools in a throwaway env
+# uv — Astral's Python resolver, used as a tool runner (e.g. local-bin/terminus-bold,
+# nano-pdf). Not needed by the desktop itself.
 uv
 
 # Terminal niceties the repo ships configs for

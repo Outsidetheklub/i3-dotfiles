@@ -23,10 +23,10 @@ set $browser waterfox
 set $editor zed
 set $filemanager thunar
 
-# Font: Terminus (see kitty.conf for the whole story). pango can't resolve a
-# bare `monospace` to it, so it's named explicitly; 13pt ≈ what 11pt of the old
-# fontconfig monospace (Noto Sans Mono) looked like.
-font pango:Terminess Nerd Font Mono 13
+# Font: Noto Sans Mono 11 (2026-10-23) — back to the default fontconfig face;
+# the Terminus pass from 2026-09-29 is gone. Pango can't resolve a bare
+# `monospace` reliably, so the family is named explicitly.
+font pango:Noto Sans Mono 11
 
 # ── Behaviour ───────────────────────────────────────────
 floating_modifier $mod
@@ -228,10 +228,9 @@ bindsym $mod+Shift+a exec --no-startup-id $HOME/.local/bin/awake-toggle
 bar {
     status_command i3status
     position bottom
-    # Bold here on purpose (2026-09-29): Terminus Regular's stems are a single
-    # pixel, which reads as thin at bar text sizes. The WM's global font above
-    # stays Regular, and so do the terminal, Thunar and rofi.
-    font pango:Terminess Nerd Font Mono Bold 13
+    # Same family as the WM font above (2026-10-23). No Bold trick any more:
+    # that existed only because Terminus Regular's stems were 1px.
+    font pango:Noto Sans Mono 11
     workspace_buttons yes
     strip_workspace_numbers no
     binding_mode_indicator yes

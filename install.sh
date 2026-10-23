@@ -107,17 +107,10 @@ else
     echo "==> skipping papirus-folders: needs 'papirus-icon-theme' + 'papirus-folders-git' (see packages.txt)"
 fi
 
-# Terminus Bold under its own family name (local-bin/terminus-bold). The browser's
-# font settings ask for "Terminess Bold Mono": Firefox resolves a family against
-# the list of installed families, so a fontconfig alias is invisible to it — the
-# Bold TTF gets a renamed copy instead. Needs uv (fetches fontTools) + Terminus.
-if [ -x "$HOME/.local/bin/terminus-bold" ]; then
-    echo "==> terminus-bold (Terminus Bold as its own family)"
-    "$HOME/.local/bin/terminus-bold" || \
-        echo "   !! terminus-bold failed - the browser falls back to Regular Terminus" >&2
-else
-    echo "==> skipping terminus-bold: not stowed yet"
-fi
+# Terminus Bold (local-bin/terminus-bold) used to be built here for the browser's
+# font prefs. Since 2026-10-23 the desktop runs stock Noto Sans / Noto Sans Mono,
+# so nothing asks for that generated family and the step is gone. The script is
+# still in local-bin/ if a Nerd-Font pass ever comes back.
 
 # gamepad-idle-guard — keep the display awake while a gamepad is in use (X11 only
 # counts keyboard/mouse as activity, so DPMS blanked mid-game). The source is

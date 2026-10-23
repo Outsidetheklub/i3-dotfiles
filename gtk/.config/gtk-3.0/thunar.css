@@ -355,18 +355,12 @@ menu separator {
    So: density = font size. Selection = inverted block (the big terminal cue).
    ============================================================================= */
 
-/* --- Terminal font --------------------------------------------------------
- * Terminus — the classic console face, added 2026-09-29 (see kitty.conf for the
- * install story). Asks for the same family the terminal uses; the fallback
- * keeps it working if the font is ever missing. 12pt ≈ the 11pt `monospace`
- * this file used before (Terminus renders smaller at equal pt).
+/* --- Font ----------------------------------------------------------------
+ * No override (2026-10-23): Thunar inherits the GTK default from
+ * gtk-3.0/settings.ini (Noto Sans 10). The Terminus block that lived here
+ * from 2026-09-29 to 2026-10-23 is gone.
  * NOTE: row height is NOT driven by the font — Thunar sizes rows from its
  * 18px list icons, so the pitch stays 28px whatever the font does. */
-.thunar,
-.thunar * {
-    font-family: "Terminess Nerd Font Mono", monospace;
-    font-size: 12pt;
-}
 
 /* --- Instant, no fades/slides (terminals don't animate) -------------------- */
 .thunar .frame.standard-view,
