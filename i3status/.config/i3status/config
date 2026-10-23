@@ -14,7 +14,7 @@
 #     add up to total next to %available. Added 2026-09-27.
 
 general {
-        colors = false
+        colors = true
         interval = 5
 }
 

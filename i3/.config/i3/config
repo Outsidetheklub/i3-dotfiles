@@ -23,10 +23,10 @@ set $browser waterfox
 set $editor zed
 set $filemanager thunar
 
-# Font: Noto Sans Mono 11 (2026-10-23) — back to the default fontconfig face;
-# the Terminus pass from 2026-09-29 is gone. Pango can't resolve a bare
-# `monospace` reliably, so the family is named explicitly.
-font pango:Noto Sans Mono 11
+# Font: stock i3 default, pango:monospace 8 (2026-10-24 trial).
+# fc-match resolves "monospace" -> Noto Sans Mono here, so this should land on
+# the same face, just at i3's default size.
+font pango:monospace 8
 
 # ── Behaviour ───────────────────────────────────────────
 floating_modifier $mod
@@ -228,28 +228,16 @@ bindsym $mod+Shift+a exec --no-startup-id $HOME/.local/bin/awake-toggle
 bar {
     status_command i3status
     position bottom
-    # Same family as the WM font above (2026-10-23). No Bold trick any more:
-    # that existed only because Terminus Regular's stems were 1px.
-    # 12pt: one step up from the WM/terminal 11 (his request) — the bar is read
-    # at a glance, so it gets a touch more size than the rest.
-    font pango:Noto Sans Mono 12
+    # Stock default size/family (i3bar's own default is pango:monospace 8);
+    # written out so it is grep-able rather than implicit.
+    font pango:monospace 8
     workspace_buttons yes
     strip_workspace_numbers no
     binding_mode_indicator yes
 
-    # Black + grey. i3's stock colours put a blue (#285577) block behind the
-    # focused workspace; this keeps it greyscale instead. Delete this block to
-    # go back to i3's defaults.
-    colors {
-        background         #000000
-        statusline         #dddddd
-        separator          #000000
-        focused_workspace  #303030 #303030 #ffffff
-        active_workspace   #000000 #000000 #ffffff
-        inactive_workspace #000000 #000000 #888888
-        urgent_workspace   #303030 #303030 #ff5555
-        binding_mode       #303030 #303030 #ffffff
-    }
+    # No colors block on purpose: i3bar's stock palette applies (black bar,
+    # white status text, blue #285577 block on the focused workspace).
+    # The greyscale override that lived here until 2026-10-23 is gone.
 }
 
 

@@ -49,7 +49,9 @@ The desktop uses the **stock Noto faces** (since 2026-10-23) — nothing to inst
 beyond `noto-fonts`, which comes with `packages.txt` anyway:
 
 - **Noto Sans Mono** where a monospace face belongs: `font_family` in `kitty/`
-  and both `font pango:…` lines in `i3/` (WM + bar), at 11pt.
+  (11pt), and both `font pango:…` lines in `i3/` (WM + bar) at the **stock 8pt**
+  default (`pango:monospace 8`). `fc-match monospace` resolves to Noto Sans Mono
+  here, so the face is unchanged — only the size went back to i3's default.
 - **Noto Sans** for widgets: `gtk-font-name` in `gtk-3.0/` + `gtk-4.0/` (10pt,
   the GTK default) and `font:` in `rofi/` (12pt).
 - **Thunar** sets no font of its own, so its file list inherits the GTK default.
