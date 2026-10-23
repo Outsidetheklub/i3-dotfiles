@@ -359,9 +359,19 @@ def apps_menu() -> None:
         msgbox(f"No installed app claims {cat}")
         return
     rows = [f"{app_name(meta, did)}\t{did}" for did, meta in apps]
+    # Escape hatch: some apps can open a type without declaring it in their
+    # .desktop (Waterfox has no application/pdf, so it never shows up above).
+    all_row = "All installed apps (ignores MIME declarations)"
+    rows.append(all_row)
     choice = menu(f"Default: {cat}", rows, f"Currently: {category_default(cat)}")
     if not choice:
         return
+    if choice == all_row:
+        every = [f"{app_name(meta, did)}\t{did}" for did, meta in entries]
+        choice = menu(f"Any app: {cat}", every,
+                      "This app does not claim the type - check it opens it")
+        if not choice:
+            return
     desktop_id = choice.split("\t", 1)[1]
     result = set_default(cat, desktop_id)
     msgbox(f"{cat} -> {desktop_id}\n{result}")
