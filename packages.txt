@@ -98,6 +98,12 @@ lightdm-gtk-greeter
 #   papirus-folders-git (AUR) - recolours Papirus folders (the white folders the
 #   GTK icon theme depends on). install.sh uses it if present; without it you
 #   get blue folders. On CachyOS it's mirrored too.
+#   vikunja-desktop-bin (AUR) - the Vikunja desktop client. The Vikunja *server*
+#   is not part of this setup: it runs as a rootless podman quadlet on the
+#   desktop box (see memory notes 2026-10-25) and is reached over Tailscale at
+#   http://vasileioslap.tail009ed7.ts.net:3456 — any machine on the tailnet just
+#   needs this client (or a browser) plus `tailscale up` in the same account.
+#   Pulls electron43 from extra. Server CORS must stay ON for this client.
 #
 # In the official repos, but only useful with the Spotify bind ($mod+m).
 # spotify-player is the light one (Rust TUI + librespot): ~75 MB vs the official
