@@ -76,7 +76,7 @@ bindsym $mod+space exec rofi -show drun
 bindsym $mod+b exec $browser
 bindsym $mod+Return exec $terminal
 bindsym $mod+e exec $filemanager
-bindsym $mod+p exec pavucontrol
+bindsym $mod+p exec pavucontrol --tab=1
 bindsym $mod+d exec com.discordapp.Discord
 
 # Bluetooth menu — rofi front-end for bluetoothctl.
