@@ -1,6 +1,6 @@
 [Added Associations]
 application/octet-stream=codium.desktop;
-application/pdf=waterfox.desktop;
+application/pdf=libreoffice-draw.desktop;waterfox.desktop;
 application/x-compressed-tar=org.gnome.FileRoller.desktop;thunar.desktop;
 application/x-extension-htm=waterfox.desktop;
 application/x-extension-html=waterfox.desktop;
@@ -85,6 +85,6 @@ x-scheme-handler/chrome=waterfox.desktop
 x-scheme-handler/http=waterfox.desktop
 x-scheme-handler/https=waterfox.desktop
 x-scheme-handler/codex=chatgpt.desktop
-application/pdf=waterfox.desktop
+application/pdf=libreoffice-draw.desktop
 inode/directory=thunar.desktop
 text/plain=nvim.desktop
