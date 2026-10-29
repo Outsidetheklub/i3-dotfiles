@@ -11,6 +11,15 @@ CLI:
   settings set <category> <desktop-id> [--dry-run]
   settings appearance list [kind]
   settings appearance set <kind> <value>
+  settings i3 show [category|all]    read current i3 values
+  settings i3 binds                  keybinds + duplicate detection
+  settings i3 check                  parser and i3 -C sanity report
+  settings i3 menu                   rofi browser (read + edit)
+  settings i3 set <setting> <value> [--dry-run]
+  settings i3 undo                   restore the newest backup
+  settings i3 diff                   pending changes to the config
+  settings i3 status [show | on|off|toggle <module> | undo]
+  settings i3 bind <keys> <command> [--mode name]   edit an existing bind
 """
 
 from __future__ import annotations
@@ -20,6 +29,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -311,6 +321,810 @@ def set_appearance(kind: str, value: str) -> list[str]:
     return changed
 
 
+# ── i3 settings model ────────────────────────────────────────────────────────
+#
+# i3 has no schema and no live property API: the config text is the only source
+# of truth, and applying a change means "i3 -C" then "i3-msg reload". So the
+# model is deliberately line-based - a directive is a line span, never a
+# re-rendered tree - and everything below is read-only until the writer lands.
+# An edit will replace exactly one line and leave every other byte untouched.
+
+SUB_KEYS = {"set", "gaps", "bindsym", "bindcode"}
+
+
+class LineDoc:
+    """A config file as raw lines plus the directives parsed out of them."""
+
+    def __init__(self, path: Path):
+        self.path = path
+        self.raw = path.read_text(errors="replace")
+        self.lines = self.raw.splitlines(keepends=True)
+        self.entries = self._parse()
+
+    def _parse(self) -> list[dict]:
+        entries: list[dict] = []
+        stack: list[str] = []
+        for index, line in enumerate(self.lines):
+            body = line.rstrip("\r\n")
+            eol = line[len(body):]
+            stripped = body.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if stripped == "}":
+                if stack:
+                    stack.pop()
+                continue
+            if stripped.endswith("{"):
+                stack.append(stripped[:-1].strip())
+                continue
+            parts = stripped.split(None, 2)
+            key = parts[0]
+            sub = ""
+            if key in SUB_KEYS and len(parts) > 1:
+                sub = parts[1]
+                value = parts[2] if len(parts) > 2 else ""
+            else:
+                value = stripped[len(key):].strip()
+            entries.append({
+                "index": index,
+                "indent": body[:len(body) - len(body.lstrip())],
+                "key": key,
+                "sub": sub,
+                "value": value,
+                "block": "/".join(stack),
+                "raw": line,
+                "eol": eol,
+            })
+        return entries
+
+    def canonical(self, entry: dict) -> str:
+        bits = [entry["key"]]
+        if entry["sub"]:
+            bits.append(entry["sub"])
+        if entry["value"]:
+            bits.append(entry["value"])
+        return entry["indent"] + " ".join(bits) + entry["eol"]
+
+    def find(self, key: str, block: str = "", sub: str | None = None) -> list[dict]:
+        out = []
+        for entry in self.entries:
+            if entry["key"] != key:
+                continue
+            if entry["block"] != block:
+                continue
+            if sub is not None and entry["sub"] != sub:
+                continue
+            out.append(entry)
+        return out
+
+    def variables(self) -> dict[str, str]:
+        found: dict[str, str] = {}
+        for entry in self.find("set"):
+            if entry["sub"]:
+                found[entry["sub"]] = entry["value"]
+        return found
+
+    def expand(self, text: str) -> str:
+        variables = self.variables()
+        for name in sorted(variables, key=len, reverse=True):
+            text = text.replace(name, variables[name])
+        return text
+
+
+def load_i3() -> LineDoc:
+    if not I3_CONFIG.exists():
+        die(f"{I3_CONFIG} does not exist")
+    return LineDoc(I3_CONFIG)
+
+
+def _spec(key: str, label: str, category: str, kind: str, choices: list[str],
+          default: str, help_text: str, block: str = "", sub: str | None = None) -> dict:
+    return {"key": key, "label": label, "category": category, "kind": kind,
+            "choices": choices, "default": default, "help": help_text,
+            "block": block, "sub": sub}
+
+
+# The catalogue HyprMod gets for free from "hyprctl getoption". i3 has no such
+# thing, so the app ships its own: which directive, where it may live, what it
+# accepts, and what happens when it is absent.
+I3_SPECS = [
+    # Behaviour
+    _spec("font", "Window title font", "Behaviour", "text", [],
+          "pango:monospace 8", "Font used for window titles."),
+    _spec("focus_follows_mouse", "Focus follows mouse", "Behaviour", "choice",
+          ["yes", "no", "always"], "yes",
+          "Whether moving the pointer over a window gives it focus."),
+    _spec("mouse_warping", "Warp pointer on focus change", "Behaviour", "choice",
+          ["output", "none", "container"], "output",
+          "Where the pointer lands when focus moves to another output."),
+    _spec("default_border", "Default border", "Behaviour", "choice",
+          ["none", "normal", "1pixel"], "normal",
+          "Border drawn around new windows."),
+    _spec("new_window", "New tiled window border", "Behaviour", "choice",
+          ["none", "normal", "pixel"], "normal",
+          "Border applied to new tiled windows."),
+    _spec("new_float", "New floating window border", "Behaviour", "choice",
+          ["none", "normal", "pixel"], "normal",
+          "Border applied to new floating windows."),
+    _spec("floating_modifier", "Floating modifier", "Behaviour", "text", [],
+          "none", "Hold this modifier to drag and resize floating windows."),
+    _spec("tiling_drag", "Tiling drag", "Behaviour", "choice",
+          ["modifier", "off", "titlebar"], "modifier",
+          "How tiled windows can be dragged."),
+    _spec("workspace_auto_back_and_forth", "Workspace back-and-forth",
+          "Behaviour", "choice", ["yes", "no"], "no",
+          "Switching to the current workspace returns to the previous one."),
+    _spec("hide_edge_borders", "Hide edge borders", "Behaviour", "choice",
+          ["none", "vertical", "horizontal", "both", "smart"], "none",
+          "Hide borders that sit against a screen edge."),
+    _spec("gaps", "Inner gaps", "Behaviour", "int", [], "0",
+          "Space between tiled windows, in pixels.", sub="inner"),
+    _spec("gaps", "Outer gaps", "Behaviour", "int", [], "0",
+          "Space between windows and the screen edge, in pixels.", sub="outer"),
+    _spec("smart_gaps", "Smart gaps", "Behaviour", "choice",
+          ["on", "off", "inverse_outer"], "off",
+          "Drop gaps when the workspace holds a single window."),
+    _spec("smart_borders", "Smart borders", "Behaviour", "choice",
+          ["on", "off", "no_gaps"], "off",
+          "Drop borders when the workspace holds a single window."),
+    _spec("popup_during_fullscreen", "Popup during fullscreen", "Behaviour",
+          "choice", ["smart", "ignore", "leave_fullscreen"], "smart",
+          "What happens when a window opens while another is fullscreen."),
+    _spec("title_align", "Title alignment", "Behaviour", "choice",
+          ["left", "center", "right"], "left", "Alignment of window titles."),
+    _spec("force_display_urgency_hint", "Urgency hint timeout (ms)",
+          "Behaviour", "int", [], "500",
+          "Delay before an urgent window is shown on another workspace."),
+
+    # Bar - these live inside the bar block, hence block="bar"
+    _spec("status_command", "Status command", "Bar", "text", [], "i3status",
+          "Program whose output feeds the bar.", block="bar"),
+    _spec("position", "Bar position", "Bar", "choice", ["top", "bottom"],
+          "bottom", "Where the bar sits on screen.", block="bar"),
+    _spec("font", "Bar font", "Bar", "text", [], "pango:monospace 8",
+          "Font used by the bar.", block="bar"),
+    _spec("workspace_buttons", "Workspace buttons", "Bar", "choice",
+          ["yes", "no"], "yes", "Show workspace buttons in the bar.", block="bar"),
+    _spec("strip_workspace_numbers", "Strip workspace numbers", "Bar", "choice",
+          ["yes", "no"], "no", "Show workspace names without their number.",
+          block="bar"),
+    _spec("strip_workspace_name", "Strip workspace name", "Bar", "choice",
+          ["yes", "no"], "no", "Show only the workspace number.", block="bar"),
+    _spec("binding_mode_indicator", "Binding mode indicator", "Bar", "choice",
+          ["yes", "no"], "yes", "Show the active mode (e.g. resize) in the bar.",
+          block="bar"),
+    _spec("mode", "Bar visibility", "Bar", "choice", ["dock", "hide"], "dock",
+          "Always visible, or hidden until the modifier is pressed.", block="bar"),
+    _spec("tray_output", "System tray output", "Bar", "text", [], "none",
+          "Which output shows the tray; none disables it.", block="bar"),
+]
+
+
+def i3_groups(specs: list[dict] | None = None) -> dict[str, list[dict]]:
+    groups: dict[str, list[dict]] = {}
+    for spec in (specs if specs is not None else I3_SPECS):
+        groups.setdefault(spec["category"], []).append(spec)
+    return groups
+
+
+def i3_value(doc: LineDoc, spec: dict) -> tuple[str, str]:
+    """(value to show, where it came from) - last match wins, as in i3."""
+    matches = doc.find(spec["key"], spec["block"], spec["sub"])
+    if not matches:
+        return f"(default: {spec['default']})", "not set"
+    entry = matches[-1]
+    return entry["value"] or "(empty)", f"line {entry['index'] + 1}"
+
+
+def i3_show(category: str | None = None) -> None:
+    doc = load_i3()
+    specs = [spec for spec in I3_SPECS
+             if category is None or spec["category"] == category]
+    if not specs:
+        die(f"no i3 category matching {category!r}; try: {', '.join(i3_groups())}")
+    first = True
+    for name, group in i3_groups(specs).items():
+        if not first:
+            print()
+        first = False
+        print(name)
+        for spec in group:
+            value, where = i3_value(doc, spec)
+            print(f"  {spec['label']:<32}{value:<30}{where}")
+
+
+def match_i3_category(text: str) -> str:
+    names = list(i3_groups())
+    for name in names:
+        if name.lower() == text.lower():
+            return name
+    partial = [name for name in names if text.lower() in name.lower()]
+    if len(partial) == 1:
+        return partial[0]
+    die(f"no unique i3 category matching {text!r}; try: {', '.join(names)}")
+
+
+def _binds_lines(doc: LineDoc) -> list[str]:
+    binds = [entry for entry in doc.entries
+             if entry["key"] in ("bindsym", "bindcode")]
+    lines: list[str] = []
+    seen: dict[tuple[str, str], int] = {}
+    conflicts: list[str] = []
+    current = None
+    for entry in binds:
+        mode = "default"
+        if entry["block"].startswith("mode "):
+            name = entry["block"][5:].strip().strip('"')
+            mode = name or "default"
+        key = doc.expand(entry["sub"]).lower()
+        marker = (mode, key)
+        if marker in seen:
+            conflicts.append(f"{mode}/{key} "
+                             f"(lines {seen[marker] + 1} and {entry['index'] + 1})")
+        else:
+            seen[marker] = entry["index"]
+        if mode != current:
+            current = mode
+            lines.append(("" if mode == "default" else "") + f"[{mode}]")
+        lines.append(f"  {doc.expand(entry['sub']):<22}{entry['value']}")
+    if conflicts:
+        lines.append("")
+        lines.append("Duplicate keys (i3 uses the last one):")
+        for line in conflicts:
+            lines.append(f"  {line}")
+    return lines
+
+
+def i3_binds() -> None:
+    doc = load_i3()
+    for line in _binds_lines(doc):
+        print(line)
+
+
+def i3_check() -> int:
+    doc = load_i3()
+    print(f"file:       {doc.path}")
+    print(f"size:       {len(doc.raw)} bytes, {len(doc.lines)} lines")
+    joined = "".join(doc.lines)
+    intact = joined == doc.raw
+    print(f"bytes:      {'identical on rejoin' if intact else 'CHANGED - parser bug'}")
+    print(f"directives: {len(doc.entries)} parsed")
+    odd = [entry for entry in doc.entries if doc.canonical(entry) != entry["raw"]]
+    print(f"render:     {len(doc.entries) - len(odd)}/{len(doc.entries)} "
+          "directives reproduce exactly")
+    if odd:
+        print(f"spacing:    {len(odd)} kept verbatim "
+              "(custom spacing is never rewritten)")
+    duplicates = []
+    for spec in I3_SPECS:
+        matches = doc.find(spec["key"], spec["block"], spec["sub"])
+        if len(matches) > 1:
+            where = ", ".join(str(entry["index"] + 1) for entry in matches)
+            duplicates.append(f"{spec['label']} (lines {where})")
+    if duplicates:
+        print("duplicates: " + "; ".join(duplicates) + " - i3 uses the last one")
+    else:
+        print("duplicates: none")
+    missing = [spec["label"] for spec in I3_SPECS
+               if not doc.find(spec["key"], spec["block"], spec["sub"])]
+    print(f"specs:      {len(I3_SPECS) - len(missing)} present, "
+          f"{len(missing)} at default")
+    if have("i3"):
+        res = subprocess.run(["i3", "-C", "-c", str(I3_CONFIG)],
+                             capture_output=True, text=True)
+        detail = (res.stdout + res.stderr).strip().splitlines()
+        if res.returncode == 0 and not detail:
+            print("i3 -C:      OK")
+        else:
+            print(f"i3 -C:      exit {res.returncode}")
+            for line in detail[:8]:
+                print(f"  {line}")
+    else:
+        print("i3 -C:      skipped (i3 not on PATH)")
+    return 0 if intact else 1
+
+
+def i3_browse_menu() -> None:
+    doc = load_i3()
+    groups = i3_groups()
+    items = list(groups) + ["All settings (search)", "Keybinds", "Autostart",
+                            "Config files"]
+    pick = menu("i3 settings", items,
+                "Read-only view of what i3 actually reads")
+    if not pick:
+        return
+    if pick == "Keybinds":
+        msgbox("\n".join(_binds_lines(doc)))
+        return
+    if pick == "Autostart":
+        msgbox("\n".join(_autostart_lines(doc)))
+        return
+    if pick == "Config files":
+        msgbox(f"{I3_CONFIG}\n-> {I3_CONFIG}\n\n{I3_LOCAL}\n-> "
+               f"{'missing' if not I3_LOCAL.exists() else 'present'}")
+        return
+    if pick.startswith("All settings"):
+        rows = i3_spec_rows(doc, I3_SPECS, with_id=True)
+        choice = menu("i3 settings", rows, "Type to filter")
+        if not choice:
+            return
+        i3_detail(doc, I3_SPECS[rows.index(choice)])
+        return
+    group = groups[pick]
+    rows = i3_spec_rows(doc, group)
+    choice = menu(pick, rows, "Read-only - values come straight from the file")
+    if not choice:
+        return
+    i3_detail(doc, group[rows.index(choice)])
+
+
+# ── i3 writing ───────────────────────────────────────────────────────────────
+#
+# Order matters: render the candidate text, validate THAT with "i3 -C", and only
+# then back up and replace. A rejected config never reaches disk. The write goes
+# through the symlink target, so stow keeps working, and the replace is atomic
+# inside the repo.
+
+I3_BACKUPS = HOME / ".local/share/i3-config-backups"
+
+
+def spec_id(spec: dict) -> str:
+    parts = [spec["category"].lower(), spec["key"]]
+    if spec["sub"]:
+        parts.append(spec["sub"])
+    return ".".join(parts)
+
+
+def match_spec(text: str) -> dict:
+    wanted = text.lower()
+    exact = [spec for spec in I3_SPECS if spec_id(spec) == wanted]
+    if len(exact) == 1:
+        return exact[0]
+    partial = [spec for spec in I3_SPECS
+               if wanted in spec_id(spec) or wanted in spec["label"].lower()]
+    if len(partial) == 1:
+        return partial[0]
+    die(f"no unique setting matching {text!r}; run: settings i3 show")
+
+
+def i3_current(doc: LineDoc, spec: dict) -> str:
+    matches = doc.find(spec["key"], spec["block"], spec["sub"])
+    return matches[-1]["value"] if matches else spec["default"]
+
+
+def i3_cleaned(raw: str, spec: dict) -> str | None:
+    value = raw.strip()
+    if not value:
+        return None
+    if spec["kind"] == "int":
+        return value if re.fullmatch(r"\d+", value) else None
+    if spec["kind"] == "choice":
+        for choice in spec["choices"]:
+            if value == choice or value.startswith(choice + " "):
+                return value
+        return None
+    return value
+
+
+def i3_line(spec: dict, value: str, indent: str = "") -> str:
+    bits = [spec["key"]]
+    if spec["sub"]:
+        bits.append(spec["sub"])
+    bits.append(value)
+    return indent + " ".join(bits) + "\n"
+
+
+def block_close(doc: LineDoc, head: str) -> int | None:
+    start = None
+    depth = 0
+    for index, line in enumerate(doc.lines):
+        stripped = line.strip()
+        if start is None:
+            opens = stripped == head + " {" or (stripped.startswith(head + " ")
+                                                and stripped.endswith("{"))
+            if opens:
+                start = index
+                depth = 1
+            continue
+        if stripped.endswith("{"):
+            depth += 1
+        elif stripped == "}":
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
+
+
+def i3_candidate(spec: dict, value: str) -> tuple[str, int, str, str]:
+    """New file text plus (line index, before, after) for the touched line."""
+    doc = load_i3()
+    matches = doc.find(spec["key"], spec["block"], spec["sub"])
+    lines = list(doc.lines)
+    if matches:
+        entry = matches[-1]
+        before, after = entry["raw"], i3_line(spec, value, entry["indent"])
+        lines[entry["index"]] = after
+        return "".join(lines), entry["index"], before, after
+    if spec["block"]:
+        close = block_close(doc, spec["block"])
+        if close is None:
+            die(f"no {spec['block']} block in {I3_CONFIG}")
+        after = i3_line(spec, value, "    ")
+        lines.insert(close, after)
+        return "".join(lines), close, "", after
+    if lines and not lines[-1].endswith("\n"):
+        lines[-1] = lines[-1] + "\n"
+    after = i3_line(spec, value)
+    lines.append(after)
+    return "".join(lines), len(lines) - 1, "", after
+
+
+def i3_validate(text: str) -> tuple[bool, str]:
+    if not have("i3"):
+        die("i3 is not on PATH, cannot validate")
+    handle, tmp = tempfile.mkstemp(prefix="i3-check-", suffix=".config")
+    try:
+        with os.fdopen(handle, "w") as fh:
+            fh.write(text)
+        res = subprocess.run(["i3", "-C", "-c", tmp], capture_output=True, text=True)
+        detail = (res.stdout + res.stderr).strip()
+        return (res.returncode == 0 and not detail), detail
+    finally:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+
+
+def _backup_config(source: Path = I3_CONFIG, prefix: str = "config") -> Path:
+    I3_BACKUPS.mkdir(parents=True, exist_ok=True)
+    backup = I3_BACKUPS / f"{prefix}-{time.strftime('%Y%m%d-%H%M%S-%f')}"
+    shutil.copy2(source.resolve(), backup)
+    return backup
+
+
+def _replace_config(text: str, target_path: Path = I3_CONFIG) -> None:
+    target = target_path.resolve()
+    handle, tmp = tempfile.mkstemp(prefix=".i3-config-", dir=str(target.parent))
+    with os.fdopen(handle, "w") as fh:
+        fh.write(text)
+    shutil.copymode(str(target), tmp)
+    os.replace(tmp, target)
+
+
+def i3_reload() -> str:
+    res = subprocess.run(["i3-msg", "reload"], capture_output=True, text=True)
+    out = (res.stdout + res.stderr).strip()
+    return out.splitlines()[-1] if out else f"exit {res.returncode}"
+
+
+def i3_set(spec: dict, raw: str, dry_run: bool = False) -> str:
+    value = i3_cleaned(raw, spec)
+    if value is None:
+        accepts = ", ".join(spec["choices"]) or "a number"
+        die(f"{spec['label']}: {raw!r} is not valid ({spec['kind']}; accepts {accepts})")
+    text, index, before, after = i3_candidate(spec, value)
+    if before and before.rstrip("\n") == after.rstrip("\n"):
+        return "unchanged"
+    ok, detail = i3_validate(text)
+    if not ok:
+        die(f"i3 rejects the change, nothing written:\n{detail or '(no output)'}")
+    if dry_run:
+        print(f"- {before.rstrip()}" if before else "(new line)")
+        print(f"+ {after.rstrip()}")
+        return f"dry-run, would write line {index + 1}"
+    backup = _backup_config()
+    _replace_config(text)
+    return (f"{spec['label']} = {value}\n"
+            f"line {index + 1}  {i3_reload()}\n"
+            f"backup: {backup}")
+
+
+def i3_undo() -> str:
+    backups = sorted(I3_BACKUPS.glob("config-*")) if I3_BACKUPS.is_dir() else []
+    if not backups:
+        die(f"no backups in {I3_BACKUPS}")
+    newest = backups[-1]
+    text = newest.read_text(errors="replace")
+    ok, detail = i3_validate(text)
+    if not ok:
+        die(f"{newest.name} no longer validates, not restoring:\n{detail}")
+    _backup_config()
+    _replace_config(text)
+    return f"restored {newest.name}\n{i3_reload()}"
+
+
+def prompt(text: str, current: str = "") -> str | None:
+    cmd = ["rofi", "-dmenu", "-p", text]
+    if current:
+        cmd += ["-filter", current]
+    proc = subprocess.run(cmd, input="", text=True, capture_output=True)
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip() or None
+
+
+def i3_spec_rows(doc: LineDoc, specs: list[dict], with_id: bool = False) -> list[str]:
+    rows = []
+    for spec in specs:
+        value, _ = i3_value(doc, spec)
+        label = spec_id(spec) if with_id else spec["label"]
+        rows.append(f"{label}\t{value}")
+    return rows
+
+
+def i3_detail(doc: LineDoc, spec: dict) -> None:
+    value, where = i3_value(doc, spec)
+    msgbox(f"{spec['label']}  ({spec_id(spec)})\n{value}\n\n{where}\n\n"
+           f"{spec['help']}\n\nfile: {I3_CONFIG}")
+
+
+def _autostart_lines(doc: LineDoc) -> list[str]:
+    lines = [f"  {entry['key']:<12}{entry['value']}"
+             for entry in doc.entries
+             if entry["key"] in ("exec", "exec_always")]
+    return lines or ["  (none)"]
+
+
+def i3_diff() -> str:
+    repo = HOME / "i3-dotfiles"
+    if not (repo / ".git").exists():
+        return f"no git repo at {repo}"
+    res = subprocess.run(["git", "-C", str(repo), "diff", "--",
+                          "i3/.config/i3/config",
+                          "i3status/.config/i3status/config"],
+                         capture_output=True, text=True)
+    return (res.stdout + res.stderr).strip() or "no changes vs HEAD"
+
+
+def i3_edit_menu() -> None:
+    doc = load_i3()
+    groups = i3_groups()
+    items = ["All settings (search)"] + list(groups)
+    pick = menu("i3 settings", items, "Enter = open, Esc = close")
+    if not pick:
+        return
+    if pick.startswith("All settings"):
+        rows = i3_spec_rows(doc, I3_SPECS, with_id=True)
+        choice = menu("i3 settings", rows, "Type to filter, Enter to change")
+        if not choice:
+            return
+        i3_edit_spec(doc, I3_SPECS[rows.index(choice)])
+        return
+    group = groups[pick]
+    rows = i3_spec_rows(doc, group)
+    choice = menu(pick, rows, "Pick a setting to change")
+    if not choice:
+        return
+    i3_edit_spec(doc, group[rows.index(choice)])
+
+
+def i3_edit_spec(doc: LineDoc, spec: dict) -> None:
+    current = i3_current(doc, spec)
+    if spec["kind"] == "choice":
+        picked = menu(spec["label"], spec["choices"], f"Current: {current}")
+        if not picked:
+            return
+        new = picked
+    else:
+        new = prompt(spec["label"], current)
+    if not new:
+        return
+    if new == current:
+        msgbox("Unchanged")
+        return
+    if i3_cleaned(new, spec) is None:
+        msgbox(f"{spec['label']}: invalid value {new!r}")
+        return
+    msgbox(i3_set(spec, new))
+
+
+# ── i3status (the bar's other half) ─────────────────────────────────────────
+#
+# Separate file, separate process, separate apply rule: "i3-msg reload" re-reads
+# the i3 config but does not respawn i3status, so anything here needs
+# "i3-msg restart" (one flicker of the bar). Read-only for now.
+
+I3_STATUS = CONFIG / "i3status" / "config"
+
+
+class StatusDoc:
+    """i3status config: general { } keys, order += lines, module blocks."""
+
+    def __init__(self, path: Path):
+        self.path = path
+        self.raw = path.read_text(errors="replace")
+        self.lines = self.raw.splitlines(keepends=True)
+        self.general: dict[str, str] = {}
+        self.order: list[str] = []
+        self.blocks: list[str] = []
+        self._parse()
+
+    def _parse(self) -> None:
+        stack: list[str] = []
+        for line in self.lines:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if stripped == "}":
+                if stack:
+                    stack.pop()
+                continue
+            if stripped.endswith("{"):
+                head = stripped[:-1].strip()
+                stack.append(head)
+                if head != "general":
+                    self.blocks.append(head)
+                continue
+            if stripped.startswith("order +="):
+                name = stripped[len("order +="):].strip().strip('"')
+                if name:
+                    self.order.append(name)
+                continue
+            if "=" in stripped and stack and stack[-1] == "general":
+                key, value = stripped.split("=", 1)
+                self.general[key.strip()] = value.strip()
+
+    def orders(self) -> list[dict]:
+        """Every order += line, active or commented out."""
+        found = []
+        for index, line in enumerate(self.lines):
+            body = line.strip()
+            active = True
+            if body.startswith("#"):
+                body = body[1:].strip()
+                active = False
+            if not body.startswith("order +="):
+                continue
+            name = body[len("order +="):].strip().strip('"')
+            if name:
+                found.append({"index": index, "name": name, "active": active})
+        return found
+
+
+def status_lines() -> list[str]:
+    if not I3_STATUS.exists():
+        die(f"{I3_STATUS} does not exist")
+    doc = StatusDoc(I3_STATUS)
+    lines = [f"general  ({I3_STATUS})"]
+    for key, value in doc.general.items():
+        lines.append(f"  {key:<10}{value}")
+    lines.append("")
+    lines.append("order  (left to right)")
+    for number, name in enumerate(doc.order, 1):
+        lines.append(f"  {number:<3}{name}")
+    lines.append("")
+    lines.append("module blocks")
+    for name in doc.blocks:
+        lines.append(f"  {name}")
+    return lines
+
+
+def i3_status_show() -> None:
+    for line in status_lines():
+        print(line)
+
+
+def i3_restart() -> str:
+    res = subprocess.run(["i3-msg", "restart"], capture_output=True, text=True)
+    out = (res.stdout + res.stderr).strip()
+    return out.splitlines()[-1] if out else f"exit {res.returncode}"
+
+
+def status_set(module: str, enable: bool | None = None) -> str:
+    """Toggle one module by commenting or uncommenting its order += line."""
+    if not I3_STATUS.exists():
+        die(f"{I3_STATUS} does not exist")
+    doc = StatusDoc(I3_STATUS)
+    hits = [entry for entry in doc.orders()
+            if module.lower() in entry["name"].lower()]
+    if not hits:
+        die(f"no bar module matching {module!r}")
+    if len(hits) > 1:
+        die(f"ambiguous: {', '.join(entry['name'] for entry in hits)}")
+    entry = hits[0]
+    want = (not entry["active"]) if enable is None else enable
+    if want == entry["active"]:
+        return f"{entry['name']} already {'on' if want else 'off'}"
+    line = doc.lines[entry["index"]]
+    if want:
+        new_line = re.sub(r"^(\s*)#\s?", r"\1", line, count=1)
+    else:
+        new_line = re.sub(r"^(\s*)", r"\1# ", line, count=1)
+    lines = list(doc.lines)
+    lines[entry["index"]] = new_line
+    backup = _backup_config(I3_STATUS, "i3status")
+    _replace_config("".join(lines), I3_STATUS)
+    return (f"{entry['name']}: {'on' if want else 'off'}\n"
+            f"line {entry['index'] + 1}  {i3_restart()}\n"
+            f"backup: {backup}")
+
+
+def status_undo() -> str:
+    backups = sorted(I3_BACKUPS.glob("i3status-*")) if I3_BACKUPS.is_dir() else []
+    if not backups:
+        die(f"no i3status backups in {I3_BACKUPS}")
+    newest = backups[-1]
+    _backup_config(I3_STATUS, "i3status")
+    _replace_config(newest.read_text(errors="replace"), I3_STATUS)
+    return f"restored {newest.name}\n{i3_restart()}"
+
+
+def i3_status_menu() -> None:
+    pick = menu("Bar status", ["Show status", "Toggle modules"],
+                "i3status is a separate process - toggling restarts the bar")
+    if not pick:
+        return
+    if pick == "Show status":
+        msgbox("\n".join(status_lines()))
+        return
+    if not I3_STATUS.exists():
+        msgbox(f"{I3_STATUS} does not exist")
+        return
+    doc = StatusDoc(I3_STATUS)
+    entries = doc.orders()
+    rows = [f"{'on ' if entry['active'] else 'off'}  {entry['name']}"
+            for entry in entries]
+    choice = menu("Bar modules", rows, "Enter = toggle that module")
+    if not choice:
+        return
+    msgbox(status_set(entries[rows.index(choice)]["name"]))
+
+
+def _bind_entries(doc: LineDoc) -> list[dict]:
+    return [entry for entry in doc.entries
+            if entry["key"] in ("bindsym", "bindcode")]
+
+
+def _bind_mode(entry: dict) -> str:
+    if entry["block"].startswith("mode "):
+        return entry["block"][5:].strip().strip('"') or "default"
+    return "default"
+
+
+def i3_bind_set(index: int, command: str) -> str:
+    """Rewrite one bindsym line. Keys stay, the command changes."""
+    command = command.strip()
+    if not command:
+        die("empty command")
+    doc = load_i3()
+    entry = next((item for item in doc.entries if item["index"] == index), None)
+    if entry is None or entry["key"] not in ("bindsym", "bindcode"):
+        die("that line is gone or changed - reopen the menu")
+    lines = list(doc.lines)
+    lines[index] = (f"{entry['indent']}{entry['key']} {entry['sub']} "
+                    f"{command}{entry['eol'] or chr(10)}")
+    text = "".join(lines)
+    ok, detail = i3_validate(text)
+    if not ok:
+        die(f"i3 rejects the change, nothing written:\n{detail or '(no output)'}")
+    backup = _backup_config()
+    _replace_config(text)
+    return (f"{entry['key']} {entry['sub']}  ->  {command}\n"
+            f"line {index + 1}  {i3_reload()}\n"
+            f"backup: {backup}")
+
+
+def i3_binds_menu() -> None:
+    doc = load_i3()
+    entries = _bind_entries(doc)
+    rows = [f"{_bind_mode(entry)}\t{doc.expand(entry['sub'])}\t{entry['value']}"
+            for entry in entries]
+    choice = menu("Keybinds", rows,
+                  "Pick a bind, then edit its command (the keys stay)")
+    if not choice:
+        return
+    entry = entries[rows.index(choice)]
+    current = entry["value"]
+    new = prompt(doc.expand(entry["sub"]), current)
+    if not new:
+        return
+    if new == current:
+        msgbox("Unchanged")
+        return
+    msgbox(i3_bind_set(entry["index"], new))
+
+
 # ── ui helpers ───────────────────────────────────────────────────────────────
 
 def menu(prompt: str, items: list[str], mesg: str | None = None) -> str | None:
@@ -422,9 +1236,26 @@ def display_menu() -> None:
 
 
 def i3_menu() -> None:
-    pick = menu("i3", ["Edit ~/.config/i3/config", "Edit local.conf (machine-specific)",
-                       "Reload i3", "Restart i3", "Validate config"])
+    pick = menu("i3", ["Change a setting", "Keybinds (edit command)",
+                       "Browse settings (read-only)",
+                       "Edit ~/.config/i3/config",
+                       "Edit local.conf (machine-specific)",
+                       "Reload i3", "Restart i3", "Validate config",
+                       "Bar status (i3status)", "Diff config vs git",
+                       "Undo last change"])
     if not pick:
+        return
+    if pick.startswith("Change a setting"):
+        i3_edit_menu()
+        return
+    if pick.startswith("Keybinds"):
+        i3_binds_menu()
+        return
+    if pick.startswith("Browse settings"):
+        i3_browse_menu()
+        return
+    if pick.startswith("Undo last change"):
+        msgbox(i3_undo())
         return
     if pick.startswith("Edit ~/.config/i3/config"):
         run(["zed", str(I3_CONFIG)])
@@ -436,6 +1267,10 @@ def i3_menu() -> None:
     elif pick == "Restart i3":
         res = subprocess.run(["i3-msg", "restart"], capture_output=True, text=True)
         msgbox(res.stdout.strip() or res.stderr.strip())
+    elif pick == "Bar status (i3status)":
+        i3_status_menu()
+    elif pick == "Diff config vs git":
+        msgbox(i3_diff())
     else:
         res = subprocess.run(["i3", "-C", "-c", str(I3_CONFIG)], capture_output=True, text=True)
         msgbox((res.stdout + res.stderr).strip() or f"OK (exit {res.returncode})")
@@ -551,6 +1386,71 @@ def cli(argv: list[str]) -> None:
                 print(path)
             return
         die("usage: settings appearance [list [kind] | set <kind> <value>]")
+    if cmd == "i3":
+        rest = argv[1:]
+        if not rest or rest[0] in ("show", "list"):
+            arg = rest[1] if len(rest) > 1 else "all"
+            i3_show(None if arg.lower() in ("all", "*") else match_i3_category(arg))
+            return
+        if rest[0] == "binds":
+            i3_binds()
+            return
+        if rest[0] == "check":
+            sys.exit(i3_check())
+        if rest[0] == "menu":
+            i3_edit_menu()
+            return
+        if rest[0] == "set":
+            if len(rest) < 3:
+                die("usage: settings i3 set <setting> <value> [--dry-run]")
+            value = " ".join(arg for arg in rest[2:] if arg != "--dry-run")
+            print(i3_set(match_spec(rest[1]), value, "--dry-run" in rest))
+            return
+        if rest[0] == "undo":
+            print(i3_undo())
+            return
+        if rest[0] == "diff":
+            print(i3_diff())
+            return
+        if rest[0] == "status":
+            args = rest[1:]
+            if not args or args[0] == "show":
+                i3_status_show()
+                return
+            if args[0] in ("on", "off", "toggle") and len(args) > 1:
+                enable = {"on": True, "off": False, "toggle": None}[args[0]]
+                print(status_set(" ".join(args[1:]), enable))
+                return
+            if args[0] == "undo":
+                print(status_undo())
+                return
+            die("usage: settings i3 status [show | on|off|toggle <module> | undo]")
+        if rest[0] == "bind":
+            args = rest[1:]
+            if not args or args[0] == "list":
+                i3_binds()
+                return
+            mode = None
+            if "--mode" in args:
+                pos = args.index("--mode")
+                mode = args[pos + 1] if len(args) > pos + 1 else None
+                args = args[:pos] + args[pos + 2:]
+            if len(args) < 2:
+                die("usage: settings i3 bind <keys> <command> [--mode name]")
+            keys, command = args[0], " ".join(args[1:])
+            doc = load_i3()
+            hits = [entry for entry in _bind_entries(doc)
+                    if entry["sub"] == keys
+                    and (mode is None or _bind_mode(entry) == mode)]
+            if not hits:
+                suffix = f" in mode {mode!r}" if mode else ""
+                die(f"no bind for {keys!r}{suffix}")
+            if len(hits) > 1:
+                modes = ", ".join(sorted({_bind_mode(entry) for entry in hits}))
+                die(f"{keys!r} exists in several modes ({modes}); add --mode")
+            print(i3_bind_set(hits[0]["index"], command))
+            return
+        die("usage: settings i3 [show [category|all] | binds | check | menu]")
     die(f"unknown command {cmd!r}")
 
 
