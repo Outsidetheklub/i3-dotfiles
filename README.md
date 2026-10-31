@@ -486,6 +486,34 @@ the script either auto-detects or stays quiet — so a stranger's clone behaves 
 | `SCREENSHOT_DIR` | `screenshot.sh` | XDG Pictures dir + `/Screenshots` |
 | `NOTIFY_TIMEOUT` | rofi feedback (`network-rofi.sh`, `bluetooth-rofi.sh`, `screenshot.sh`) | 4s (screenshots: 2s) |
 
+### ⚠️ Debian: AppArmor silently ignores stow-symlinked configs
+
+Debian ships an AppArmor profile for redshift (`/etc/apparmor.d/usr.bin.redshift`)
+that permits exactly one path:
+
+```
+owner @{HOME}/.config/redshift.conf r,
+```
+
+Stow turns that path into a symlink into this repo, and AppArmor matches the
+**resolved** target — so the rule never matches, the config is refused without any
+visible error, and redshift runs on its defaults (6500K day / 4500K night) whatever
+the tracked file says. Found the hard way on 2026-11-01: "make the night tint
+stronger" produced no change at all, because no config had ever been read.
+
+`system-files/install-system.sh` appends the real path to
+`/etc/apparmor.d/local/usr.bin.redshift` (the profile's override include) and
+reloads the profile. Verify with `redshift -v`, which prints what it actually
+loaded:
+
+```
+Temperatures: 6500K at day, 3500K at night
+```
+
+This generalises: any config file stowed into a path that a confined program is
+allowed to read only directly can be denied the same way. If a setting is being
+ignored for no reason, check `aa-status` and `journalctl -k | grep -i apparmor`.
+
 ## Recreating this on another machine (e.g. the laptop)
 
 ```sh

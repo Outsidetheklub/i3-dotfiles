@@ -68,7 +68,7 @@ else
     echo "   ! bluez-utils not installed — skipping (the bluetooth rofi menu needs it)"
 fi
 
-echo "══ 4/5 display manager (LightDM + GTK greeter)"
+echo "══ 4/6 display manager (LightDM + GTK greeter)"
 if ! command -v lightdm >/dev/null 2>&1; then
     echo "   ! lightdm is not installed — skipping."
     echo "     $PKG_INSTALL lightdm lightdm-gtk-greeter"
@@ -80,7 +80,7 @@ else
     echo "   installed /etc/lightdm/lightdm.conf.d/50-i3.conf, lightdm enabled"
 fi
 
-echo "══ 5/5 keyboard layout (Swedish, < > | reachable on an ANSI board)"
+echo "══ 5/6 keyboard layout (Swedish, < > | reachable on an ANSI board)"
 # The X server resolves layouts ONLY from /usr/share/X11/xkb (the user dir
 # ~/.config/xkb is visible to xkbcomp/libxkbcommon, not to Xorg) — so that is
 # where the `seinans` variant has to live. Installing it system-wide also means
@@ -96,6 +96,34 @@ localectl set-x11-keymap seinans pc105 "" lv3:caps_switch,terminate:ctrl_alt_bks
 echo "   set X11 keymap: seinans pc105 (lv3:caps_switch, terminate:ctrl_alt_bksp)"
 # On an ISO keyboard plain `se` is enough (skip the seinans file above):
 #   localectl set-x11-keymap se pc105
+
+echo "══ 6/6 apparmor: let redshift read its stow-symlinked config"
+# Debian confines redshift with an AppArmor profile that allows exactly one path:
+#     owner @{HOME}/.config/redshift.conf r,
+# Stow turns that path into a symlink into this repo, and AppArmor matches the
+# RESOLVED target — so the rule never fires, the config is denied silently, and
+# redshift quietly runs on its defaults (6500/4500K). No error appears anywhere
+# the user would look; found the hard way on 2026-11-01 after asking for a
+# warmer night tint and getting no change at all.
+#
+# The profile already includes local/usr.bin.redshift, so the fix belongs there
+# and survives package updates to the profile itself.
+RS_PROFILE=/etc/apparmor.d/usr.bin.redshift
+RS_LOCAL=/etc/apparmor.d/local/usr.bin.redshift
+if [ -f "$RS_PROFILE" ]; then
+    backup "$RS_LOCAL"
+    if ! grep -qF '@{HOME}/i3-dotfiles/redshift/.config/redshift.conf' "$RS_LOCAL" 2>/dev/null; then
+        {
+            echo
+            echo "# stow keeps the real file in the repo; AppArmor checks the resolved"
+            echo "# path, so the profile rule above can never match a symlink."
+            echo 'owner @{HOME}/i3-dotfiles/redshift/.config/redshift.conf r,'
+        } >> "$RS_LOCAL"
+    fi
+    apparmor_parser -r "$RS_PROFILE" && echo "   redshift can read its config through the symlink"
+else
+    echo "   no redshift AppArmor profile here (not Debian, or AppArmor off) — skipping"
+fi
 
 cat <<EOF
 
