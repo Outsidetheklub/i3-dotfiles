@@ -120,7 +120,7 @@ ca-certificates
 #   uv                 -> Astral's installer script (~/.local/bin)
 #   spotify-player     -> `cargo install spotify-player` (Rust, ~5 min build);
 #                         the official client is spotify-client from Spotify's own repo
-#   waterfox           -> tarball from waterfox.net ($mod+b)
+#   waterfox           -> third-party apt repo (BrowserWorks on OBS, see README §5) ($mod+b)
 #   tailscale          -> NOT in trixie; needs Tailscale's own apt repo:
 #                           curl -fsSL https://pkgs.tailscale.com/stable/debian/trixie.noarmor.gpg \
 #                             | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null

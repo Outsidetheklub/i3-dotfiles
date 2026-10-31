@@ -385,10 +385,13 @@ Caveats worth knowing:
 ### 5. The things Debian doesn't package
 
 ```sh
-# adw-gtk3 (the GTK theme the look depends on) — release tarball, no build:
-mkdir -p ~/.local/share/themes
+# adw-gtk3 (the GTK theme the look depends on) — release tarball, no build.
+# ⚠️ Debian has no package for it, and both gtk settings.ini files name
+# 'adw-gtk3-dark'. If it is missing, every GTK app silently falls back to stock
+# Adwaita and the greyscale gtk.css never applies — it renders "almost dark".
+mkdir -p ~/.themes
 curl -L https://github.com/lassekongo83/adw-gtk3/releases/latest/download/adw-gtk3v6.5.tar.xz \
-  | tar -xJ -C ~/.local/share/themes
+  | tar -xJ -C ~/.themes
 
 # papirus-folders (recolours the Papirus folders white; install.sh uses it):
 curl -L https://raw.githubusercontent.com/PapirusDevelopmentTeam/papirus-folders/master/papirus-folders \
@@ -399,9 +402,18 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # spotify-player ($mod+m) — not packaged; ~5 min Rust build:
 sudo apt install -y cargo
-cargo install spotify-player        # lands in ~/.cargo/bin
+# --features image is NOT a default: without it there is no album art, because no
+# image renderer is linked into the binary at all (config cannot add it back).
+# The crate is spelled with an underscore; 'spotify-player' fails to resolve.
+cargo install spotify_player --features image   # lands in ~/.cargo/bin
 
-# Waterfox ($mod+b) — tarball from waterfox.net, or a distro package if it exists
+# Waterfox ($mod+b) — third-party apt repo (BrowserWorks builds, hosted on OBS).
+# Not in any Debian archive and no longer distributed as a plain tarball:
+curl -fsSL https://download.opensuse.org/repositories/isv:/BrowserWorks/Debian_13/Release.key \
+  | gpg --dearmor | sudo tee /usr/share/keyrings/waterfox.gpg >/dev/null
+echo "deb [signed-by=/usr/share/keyrings/waterfox.gpg] https://download.opensuse.org/repositories/isv:/BrowserWorks/Debian_13/ /" \
+  | sudo tee /etc/apt/sources.list.d/waterfox.list
+sudo apt update && sudo apt install -y waterfox   # updates then come via apt upgrade
 ```
 
 Everything else is in the repo's archive: `starship` and `fastfetch` are both in
