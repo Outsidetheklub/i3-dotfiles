@@ -4,8 +4,9 @@
 # render as boxes now that the setup deliberately uses default fonts.
 # ⚠️ Lock needs i3lock (installed).
 
-entries="Shutdown\nReboot\nLogout\nLock\nSleep"
-chosen=$(echo -e "$entries" | rofi -dmenu -p "Power" -lines 5)
+# printf, not echo -e: this runs under /bin/sh (dash), whose echo treats -e as
+# literal text — the first entry rendered as "-e Shutdown" and never matched.
+chosen=$(printf '%s\n' Shutdown Reboot Logout Lock Sleep | rofi -dmenu -p "Power" -lines 5)
 case "$chosen" in
     "Shutdown") systemctl poweroff ;;
     "Reboot")   systemctl reboot ;;
