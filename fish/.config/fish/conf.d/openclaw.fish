@@ -1,3 +1,4 @@
+fish_add_path -- "$HOME/.npm-global/bin"
 # npm global binaries
 fish_add_path -g ~/.npm-global/bin
 
