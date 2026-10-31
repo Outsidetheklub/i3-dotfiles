@@ -77,6 +77,7 @@ xdg-user-dirs
 pipewire
 pipewire-pulse
 pipewire-alsa
+libspa-0.2-bluetooth
 
 # Networking + Bluetooth. Debian calls NetworkManager `network-manager`, and
 # bluetoothctl ships in `bluez` (there is no bluez-utils package).
