@@ -1,0 +1,25 @@
+#!/bin/sh
+# Recover a dark secondary screen on this desktop.
+#
+# Written 2026-10-31 during the tearing investigation: the HDMI-0 panel can lose
+# signal when that head carries NVIDIA's composition pipeline and xrandr then
+# re-inits its mode. Recover by (1) removing the pipeline from that head only and
+# (2) re-plugging the output. The main screen is left untouched.
+#
+# Run it from any terminal, or over ssh. Safe to repeat.
+set -u
+export DISPLAY="${DISPLAY:-:0}"
+
+command -v nvidia-settings >/dev/null 2>&1 || { echo "nvidia-settings missing"; exit 1; }
+
+echo "1/2 dropping the composition pipeline from DPY-0 (HDMI-0)..."
+nvidia-settings -a "CurrentMetaMode=DPY-3: 1920x1080_240 @1920x1080 +0+0 {ViewPortIn=1920x1080, ViewPortOut=1920x1080+0+0, ForceCompositionPipeline=On, ForceFullCompositionPipeline=On}, DPY-0: nvidia-auto-select @1920x1080 +1920+0 {ViewPortIn=1920x1080, ViewPortOut=1920x1080+0+0}" >/dev/null 2>&1
+
+echo "2/2 re-plugging HDMI-0..."
+xrandr --output HDMI-0 --off 2>/dev/null
+sleep 1
+xrandr --output HDMI-0 --mode 1920x1080 --rate 60.00 --pos 1920x0 2>/dev/null \
+    || xrandr --output HDMI-0 --auto --right-of DP-2 2>/dev/null
+
+sleep 1
+xrandr --listmonitors
