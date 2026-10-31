@@ -77,8 +77,9 @@ bindsym $mod+b exec $browser
 bindsym $mod+Return exec $terminal
 bindsym $mod+e exec $filemanager
 bindsym $mod+p exec pavucontrol --tab=1
-# Discord: works whether it came from pacman/apt or Flatpak, and says so if neither.
-bindsym $mod+d exec --no-startup-id sh -c 'command -v discord >/dev/null 2>&1 && exec discord; flatpak info com.discordapp.Discord >/dev/null 2>&1 && exec flatpak run com.discordapp.Discord; rofi -e "Discord not found"'
+# Discord: native binary or Flatpak, resolved by a small script (i3's exec is
+# NOT a shell, so the logic cannot live here). See local-bin/.local/bin/discord-launch.
+bindsym $mod+d exec --no-startup-id $HOME/.local/bin/discord-launch
 
 # Bluetooth menu — rofi front-end for bluetoothctl.
 # Script: ~/.local/bin/bluetooth-rofi.sh (local-bin/ in this repo).

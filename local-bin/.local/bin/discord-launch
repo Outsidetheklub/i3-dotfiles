@@ -1,0 +1,17 @@
+#!/bin/sh
+# Launch Discord whichever way it is installed.
+#
+# ⚠️ This exists as a script because i3 does NOT run `exec` through a shell: it
+# parses the command itself, so `;` splits into separate commands and single
+# quotes are not quoting. A one-liner with `&&`/`;` fails to parse.
+#
+# Order: native binary (pacman/apt/whatever), then Flatpak, then say so.
+if command -v discord >/dev/null 2>&1; then
+    exec discord
+fi
+
+if command -v flatpak >/dev/null 2>&1 && flatpak info com.discordapp.Discord >/dev/null 2>&1; then
+    exec flatpak run com.discordapp.Discord
+fi
+
+rofi -e "Discord not found: no \`discord\` binary and no com.discordapp.Discord Flatpak." 2>/dev/null || true
