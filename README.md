@@ -408,7 +408,32 @@ Everything else is in the repo's archive: `starship` and `fastfetch` are both in
 trixie main, and the whole i3/rofi/kitty/picom/thunar stack is at sane versions
 (i3 4.24, kitty 0.41.1, rofi 1.7.5, picom 12.5).
 
-### 6. Testing in a VM
+### 6. Vikunja server (desktop box only)
+
+Self-hosted todo/task manager, run as a **rootless podman quadlet** — one file in
+`~/.config/containers/systemd/vikunja.container`, data in `~/vikunja/` (SQLite +
+files), published on `:3456` and reached over Tailscale.
+
+```sh
+sudo apt install -y podman                # in trixie (5.4.2)
+# tailscale is NOT in trixie - add Tailscale's own apt repo:
+curl -fsSL https://pkgs.tailscale.com/stable/debian/trixie.noarmor.gpg \
+  | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+echo "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/debian trixie main" \
+  | sudo tee /etc/apt/sources.list.d/tailscale.list
+sudo apt update && sudo apt install -y tailscale
+sudo tailscale up                         # re-registers this box on the tailnet
+
+mkdir -p ~/vikunja/files ~/vikunja/db ~/.config/containers/systemd
+# restore vikunja.db into ~/vikunja/db/ (+ the quadlet), then:
+systemctl --user daemon-reload && systemctl --user start vikunja
+```
+
+`tailscale logout` **before** wiping the old install, otherwise the new machine
+registers as `vasileioslap-1` and the quadlet's `VIKUNJA_SERVICE_PUBLICURL`
+points at a name that no longer exists.
+
+### 7. Testing in a VM
 
 Same as the Arch VM route: no NVIDIA driver (use mesa + `qxl`/virtio-gpu), install
 `spice-vdagent` for clipboard, and the X output is usually `Virtual-1` — set that

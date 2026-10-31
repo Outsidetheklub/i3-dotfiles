@@ -120,6 +120,13 @@ ca-certificates
 #   spotify-player     -> `cargo install spotify-player` (Rust, ~5 min build);
 #                         the official client is spotify-client from Spotify's own repo
 #   waterfox           -> tarball from waterfox.net ($mod+b)
+#   tailscale          -> NOT in trixie; needs Tailscale's own apt repo:
+#                           curl -fsSL https://pkgs.tailscale.com/stable/debian/trixie.noarmor.gpg \
+#                             | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+#                           echo "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/debian trixie main" \
+#                             | sudo tee /etc/apt/sources.list.d/tailscale.list
+#   podman             -> IS in trixie (5.4.2). Only needed for the Vikunja
+#                         server on the desktop box (rootless quadlet, see memory)
 #   vikunja-desktop    -> not packaged; use the browser client or a Flatpak
 #
 # Deliberately NOT needed: any Nerd Font (the desktop uses stock Noto since
