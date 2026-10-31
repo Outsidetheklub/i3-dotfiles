@@ -126,7 +126,9 @@ disappear on the selected row — that's expected, not a bug.
 
 ## Prerequisites
 
-A base Arch install — that's all. Nothing graphical is assumed: the package list
+A base Arch install — that's all. (On Debian 13, skip to
+[Debian (apt) machines](#debian-apt-machines) — same setup, `apt` package list.)
+Nothing graphical is assumed: the package list
 below pulls in X, i3 and the login manager (`lightdm` depends on `xorg-server`,
 which in turn brings the libinput input driver). The things in this table are the
 ones a package list can't give you, because they're machine-specific:
@@ -262,6 +264,156 @@ with blue folders.
 > On CachyOS repos both `paru` and `waterfox-bin` are mirrored, so there it's
 > just `sudo pacman -S paru waterfox-bin` (`papirus-folders-git` is mirrored
 > too — `paru -S papirus-folders-git` works without building).
+
+## Debian (apt) machines
+
+Written against **Debian 13 "trixie"** (13.7.0 netinst) and verified against its
+real package index on 2026-10-31. Only two things differ from the Arch route:
+`packages.debian.txt` instead of `packages.txt`, and how the NVIDIA driver is
+obtained (see step 4). `install.sh` and `install-system.sh` detect the distro
+themselves and print the right commands.
+
+### 1. Install Debian
+
+Use the **netinst** image — `debian-13.7.0-amd64-netinst.iso`, ~756 MB. The DVD
+image buys nothing here, and there is no separate "unofficial firmware" ISO any
+more: `non-free-firmware` is on the official images since Debian 12.
+
+In the installer:
+
+- **Leave the root password empty.** That single choice is what makes the
+  installer add `sudo` and put your user in the `sudo` group. Set a root password
+  and you get *no* sudo at all — `sudo` is not part of the "standard utilities"
+  task, it is a consequence of disabling root.
+- **User account:** your normal user, plus a password. That password is what
+  `sudo` asks for. (Don't leave it empty too — the account would be locked.)
+- **tasksel:** untick every desktop environment, keep **"standard system
+  utilities"**. Everything graphical comes from `packages.debian.txt`.
+- **Partitioning:** guided / entire disk. This setup has no use for a separate
+  `/home` — it rebuilds from the repo in ~20 minutes.
+- The desktop box needs UEFI (what it already uses). GRUB goes to the disk.
+
+### 2. First boot
+
+```sh
+sudo apt update && sudo apt full-upgrade -y
+```
+
+If `sudo` is missing entirely (root password was set during install):
+
+```sh
+su -                                    # the dash matters — see below
+apt install sudo
+usermod -aG sudo <your-user>
+# then log out and back in: group changes only apply to new sessions
+```
+
+Two traps that cost an evening the first time:
+
+- **`usermod`/`adduser`/`fdisk` "not found"** — Debian keeps them in `/usr/sbin`,
+  which is not on a normal user's `PATH`. Plain `su` becomes root but keeps your
+  old `PATH`. Use `su -` (or `export PATH=$PATH:/usr/sbin:/sbin`).
+- **Console keymap** — `loadkeys` cannot work: the `kbd` package ships the tools
+  and no keymaps, console layouts are generated from XKB by `console-setup`. Use
+  `sudo dpkg-reconfigure keyboard-configuration`.
+
+Optional, for an Arch-like minimal base (fewer suggested packages):
+
+```sh
+echo 'APT::Install-Recommends "false";' | sudo tee /etc/apt/apt.conf.d/99no-recommends
+```
+
+⚠️ Do this **before** the package step, not after. `packages.debian.txt` lists the
+Thunar mount stack (`gvfs`, `gvfs-backends`, `udisks2`, `thunar-volman`) explicitly
+precisely because Debian only *recommends* them — with recommends still on, they
+arrive anyway; with them off, the explicit list is what keeps file-manager mounts
+working.
+
+### 3. Packages + repo
+
+```sh
+# 1. packages (git + stow first: install.sh needs them)
+sudo apt install -y git stow ca-certificates
+git clone https://github.com/Outsidetheklub/i3-dotfiles.git ~/i3-dotfiles
+cd ~/i3-dotfiles
+grep -v '^#' packages.debian.txt | xargs sudo apt install -y
+
+# 2. user files
+./install.sh
+
+# 3. machine-specific config (edit the outputs for THIS box)
+cp examples/local.conf examples/display.sh examples/machine.env ~/.config/i3/
+chmod +x ~/.config/i3/display.sh
+
+# 4. the root-side files + services, in one go
+#    (mouse accel, iwd wifi backend, NetworkManager + bluetooth, LightDM,
+#     keyboard layout)
+sudo bash system-files/install-system.sh
+```
+
+Same as on Arch after that: reboot, pick i3 in LightDM.
+
+### 4. NVIDIA — only on the boxes with an RTX card
+
+Debian's own `non-free` archive is stuck on **550.163.01** (trixie, trixie-backports
+*and* forky all agree), and Blackwell — the RTX 50 series — needs **570 or newer**.
+NVIDIA publishes a per-release apt repo, so that is where the driver comes from:
+
+```sh
+sudo bash system-files/debian-nvidia.sh
+```
+
+It installs the CUDA keyring for `debian13`, then `nvidia-open` (the open kernel
+modules: required on Turing and newer, mandatory for Blackwell). It removes
+Debian's own `nvidia-*` first, because the two packagings claim the same paths.
+After a reboot, `nvidia-smi` should list the GPU; updates then arrive through
+normal `apt upgrade`.
+
+Caveats worth knowing:
+
+- This repo tracks upstream quickly (615.x as of writing), so it behaves like
+  rolling drivers on a stable base. If a kernel upgrade ever lands before the
+  matching `nvidia-kernel-open-dkms` rebuild, the module fails to load — rebuild
+  with `sudo dpkg-reconfigure nvidia-kernel-open-dkms`.
+- **Secure Boot ON** means the DKMS module must be enrolled (`mokutil`) or the
+  kernel refuses it. The Ryzen desktop has Secure Boot **off**, so nothing to do
+  there.
+- `10-nvidia.conf` is machine-specific and not tracked — copy it from a backup or
+  let X autodetect.
+- Laptops with an Intel/AMD iGPU only: skip this step entirely.
+
+### 5. The things Debian doesn't package
+
+```sh
+# adw-gtk3 (the GTK theme the look depends on) — release tarball, no build:
+mkdir -p ~/.local/share/themes
+curl -L https://github.com/lassekongo83/adw-gtk3/releases/latest/download/adw-gtk3v6.5.tar.xz \
+  | tar -xJ -C ~/.local/share/themes
+
+# papirus-folders (recolours the Papirus folders white; install.sh uses it):
+curl -L https://raw.githubusercontent.com/PapirusDevelopmentTeam/papirus-folders/master/papirus-folders \
+  -o ~/.local/bin/papirus-folders && chmod +x ~/.local/bin/papirus-folders
+
+# uv (Astral's Python resolver / tool runner):
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# spotify-player ($mod+m) — not packaged; ~5 min Rust build:
+sudo apt install -y cargo
+cargo install spotify-player        # lands in ~/.cargo/bin
+
+# Waterfox ($mod+b) — tarball from waterfox.net, or a distro package if it exists
+```
+
+Everything else is in the repo's archive: `starship` and `fastfetch` are both in
+trixie main, and the whole i3/rofi/kitty/picom/thunar stack is at sane versions
+(i3 4.24, kitty 0.41.1, rofi 1.7.5, picom 12.5).
+
+### 6. Testing in a VM
+
+Same as the Arch VM route: no NVIDIA driver (use mesa + `qxl`/virtio-gpu), install
+`spice-vdagent` for clipboard, and the X output is usually `Virtual-1` — set that
+in `local.conf`. Note that i3 does not run XDG autostart, so under i3 the SPICE
+agent has to be started by `startup.sh` (it is, guarded, when the virtio port exists).
 
 ## Machine-specific config
 

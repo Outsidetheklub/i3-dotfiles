@@ -1,0 +1,126 @@
+# Packages this setup needs — Debian 13 "trixie" (amd64).
+# Install:  grep -v '^#' packages.debian.txt | xargs sudo apt install -y
+#
+# Names verified against trixie's real index (main/contrib/non-free) on
+# 2026-10-31 — every line below exists there. The Arch list (packages.txt) is
+# the primary; differences are called out in comments.
+
+i3-wm
+i3status
+i3lock
+
+# VSync for X11 — i3 is not a compositor, so without this windowed content tears.
+picom
+
+redshift
+rofi
+kitty
+
+# File manager + everything Thunar needs to actually MOUNT things (udisks2 is
+# the helper, gvfs the abstraction, thunar-volman the removable-media dialog).
+# On Arch these are split the same way, but only some are hard dependencies —
+# on Debian they are Recommends, so they're listed explicitly here.
+thunar
+thunar-volman
+gvfs
+gvfs-backends
+udisks2
+
+pavucontrol
+
+# polkit agent. Arch's polkit-gnome does not exist on Debian; mate-polkit is the
+# equivalent standalone agent (installs /usr/lib/mate-polkit/polkit-mate-authentication-agent-1).
+# local-bin/polkit-agent finds whichever agent is present.
+mate-polkit
+
+maim
+slop
+xclip
+playerctl
+brightnessctl
+wireplumber
+
+# X utilities. Arch splits these into xorg-xrandr / xorg-xsetroot / xorg-xinput;
+# Debian has one package for the first two and a separate xinput.
+x11-xserver-utils
+xinput
+xdotool
+
+stow
+git
+sudo
+
+papirus-icon-theme
+
+# Cursor theme source for `mono-cursor` (install.sh). Debian's package ships
+# /usr/share/icons/Breeze_Light — checked in the .deb, so the script works as-is.
+breeze-cursor-theme
+
+# python3 — only used by local-bin/mono-cursor (stdlib only).
+python3
+
+fish
+# The desktop uses the stock Noto faces: Noto Sans for GTK/Thunar/rofi,
+# Noto Sans Mono for kitty and the i3bar. Arch ships them as `noto-fonts`;
+# Debian splits them — fonts-noto-core has Noto Sans, fonts-noto-mono has the mono.
+fonts-noto-core
+fonts-noto-mono
+fonts-noto-color-emoji
+
+starship
+fastfetch
+
+# XDG user dirs (~/Pictures etc.) — screenshot.sh and the GTK bookmarks use them
+xdg-user-dirs
+
+# Audio — PipeWire stack (same three pieces as on Arch)
+pipewire
+pipewire-pulse
+pipewire-alsa
+
+# Networking + Bluetooth. Debian calls NetworkManager `network-manager`, and
+# bluetoothctl ships in `bluez` (there is no bluez-utils package).
+network-manager
+iwd
+bluez
+
+# Default handlers for files opened from a file manager — keep in sync with
+# gtk/.config/mimeapps.list
+sxiv
+mpv
+
+# X server + GL. On Debian xserver-xorg pulls the server, the libinput input
+# driver and the video drivers. mesa-utils + libgl1-mesa-dri give GL and the
+# software fallback — essential in a VM.
+xserver-xorg
+xserver-xorg-input-libinput
+mesa-utils
+libgl1-mesa-dri
+
+# Headers + compiler for the C helpers (src/gamepad-idle-guard.c, src/awake-toggle.c,
+# compiled by install.sh). On Arch the headers ride along in libx11/libxext/libxss
+# and the compiler is base-devel; Debian needs the -dev packages + build-essential.
+libx11-dev
+libxext-dev
+libxss-dev
+build-essential
+
+# Display manager (LightDM + GTK greeter; config in system-files/lightdm/)
+lightdm
+lightdm-gtk-greeter
+
+# Used by the "not packaged" installers below, and handy to have regardless
+curl
+ca-certificates
+
+# ── Not in Debian's repos: see the README "Debian (apt) machines" section ────
+#   adw-gtk3           -> release tarball into ~/.local/share/themes/
+#   papirus-folders    -> upstream shell script into ~/.local/bin (white folders)
+#   uv                 -> Astral's installer script (~/.local/bin)
+#   spotify-player     -> `cargo install spotify-player` (Rust, ~5 min build);
+#                         the official client is spotify-client from Spotify's own repo
+#   waterfox           -> tarball from waterfox.net ($mod+b)
+#   vikunja-desktop    -> not packaged; use the browser client or a Flatpak
+#
+# Deliberately NOT needed: any Nerd Font (the desktop uses stock Noto since
+# 2026-10-23), feh (no wallpaper by default), cliphist (no clipboard history).

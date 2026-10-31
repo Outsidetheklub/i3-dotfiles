@@ -6,8 +6,28 @@ set -eu
 
 cd "$(dirname "$0")"
 
+# Which distro is this? Only two things differ between Arch and Debian here:
+# the package list (a few packages are named differently) and the command used
+# in the "install these packages" hints. Everything else is identical.
+if command -v pacman >/dev/null 2>&1; then
+    DISTRO=arch
+    PKG_LIST=packages.txt
+    PKG_INSTALL="sudo pacman -S --needed"
+elif command -v apt-get >/dev/null 2>&1; then
+    DISTRO=debian
+    PKG_LIST=packages.debian.txt
+    PKG_INSTALL="sudo apt install -y"
+else
+    DISTRO=unknown
+    PKG_LIST=packages.txt
+    PKG_INSTALL="(no pacman/apt here - install the packages by hand)"
+fi
+
 if ! command -v stow >/dev/null 2>&1; then
-    echo "GNU Stow is required:  sudo pacman -S stow" >&2
+    case "$DISTRO" in
+        debian) echo "GNU Stow is required:  sudo apt install stow" >&2 ;;
+        *)      echo "GNU Stow is required:  sudo pacman -S stow" >&2 ;;
+    esac
     exit 1
 fi
 
@@ -83,7 +103,7 @@ if command -v python3 >/dev/null 2>&1 && [ -d /usr/share/icons/Breeze_Light ]; t
     "$HOME/.local/bin/mono-cursor" || \
         echo "   !! mono-cursor failed - cursor theme NOT applied (safe to re-run later)" >&2
 else
-    echo "==> skipping mono-cursor: needs 'python' + 'breeze-cursors' (see packages.txt)"
+    echo "==> skipping mono-cursor: needs python3 + the Breeze cursor theme (see $PKG_LIST)"
 fi
 
 # Icon theme. gtk/.config/gtk-*/settings.ini names Papirus-Dark, but stock
@@ -104,7 +124,10 @@ if command -v papirus-folders >/dev/null 2>&1; then
         fi
     fi
 else
-    echo "==> skipping papirus-folders: needs 'papirus-icon-theme' + 'papirus-folders-git' (see packages.txt)"
+    case "$DISTRO" in
+        debian) echo "==> skipping papirus-folders: needs 'papirus-icon-theme' + the papirus-folders script (see README, Debian section)" ;;
+        *)      echo "==> skipping papirus-folders: needs 'papirus-icon-theme' + 'papirus-folders-git' (see packages.txt)" ;;
+    esac
 fi
 
 # Terminus Bold (local-bin/terminus-bold) used to be built here for the browser's
@@ -148,7 +171,7 @@ echo "  1) mouse accel (root):  sudo cp system-files/99-mouse-noaccel.conf /etc/
 echo "  2) wifi backend (root): sudo cp system-files/NetworkManager/conf.d/wifi_backend.conf /etc/NetworkManager/conf.d/"
 echo "       sudo systemctl disable --now wpa_supplicant.service   # iwd takes over (see packages.txt)"
 echo "  3) display manager (root, not stowed):"
-echo "       sudo pacman -S --needed lightdm lightdm-gtk-greeter"
+echo "       $PKG_INSTALL lightdm lightdm-gtk-greeter"
 echo "       sudo install -Dm644 system-files/lightdm/50-i3.conf /etc/lightdm/lightdm.conf.d/50-i3.conf"
 echo "       sudo systemctl disable sddm.service ; sudo systemctl enable lightdm.service"
 echo "     greeter on the wrong monitor / wrong refresh rate? -> examples/lightdm-display-setup.sh"
@@ -159,8 +182,8 @@ echo "       cp examples/display.sh ~/.config/i3/display.sh      # xrandr (2nd m
 echo "       cp examples/machine.env ~/.config/i3/machine.env    # location, interfaces, screenshot dir"
 echo "       chmod +x ~/.config/i3/display.sh"
 echo "       -> then edit all three: xrandr --query | grep ' connected'"
-echo "  5) make sure the packages in packages.txt are installed"
-echo "       grep -v '^#' packages.txt | xargs sudo pacman -S --needed   # works in bash + fish"
+echo "  5) make sure the packages in $PKG_LIST are installed"
+echo "       grep -v '^#' $PKG_LIST | xargs $PKG_INSTALL   # works in bash + fish"
 echo "  6) sanity check:  i3 -C -c ~/.config/i3/config"
 echo "  7) log out and pick i3 in LightDM"
 echo "     icons: if install.sh couldn't recolour them, run"

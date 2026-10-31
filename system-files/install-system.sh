@@ -8,11 +8,22 @@
 # as <file>.bak-YYYY-MM-DD first. Nothing is deleted, nothing is uninstalled.
 #
 # It does NOT install packages — do that first:
-#     grep -v '^#' packages.txt | xargs sudo pacman -S --needed
+#     Arch:    grep -v '^#' packages.txt        | xargs sudo pacman -S --needed
+#     Debian:  grep -v '^#' packages.debian.txt | xargs sudo apt install -y
 
 set -eu
 [ "$(id -u)" -eq 0 ] || { echo "run me with sudo:  sudo bash $0" >&2; exit 1; }
 cd "$(dirname "$0")"
+
+# Package-manager names only matter for the hints printed below; the files this
+# script installs are at identical paths on Arch and Debian.
+if command -v pacman >/dev/null 2>&1; then
+    DISTRO=arch; PKG_LIST=packages.txt; PKG_INSTALL="sudo pacman -S --needed"
+elif command -v apt-get >/dev/null 2>&1; then
+    DISTRO=debian; PKG_LIST=packages.debian.txt; PKG_INSTALL="sudo apt install -y"
+else
+    DISTRO=unknown; PKG_LIST=packages.txt; PKG_INSTALL="(install packages by hand)"
+fi
 
 backup() {
     if [ -e "$1" ] && [ ! -L "$1" ]; then
@@ -60,7 +71,7 @@ fi
 echo "══ 4/5 display manager (LightDM + GTK greeter)"
 if ! command -v lightdm >/dev/null 2>&1; then
     echo "   ! lightdm is not installed — skipping."
-    echo "     sudo pacman -S --needed lightdm lightdm-gtk-greeter"
+    echo "     $PKG_INSTALL lightdm lightdm-gtk-greeter"
 else
     backup /etc/lightdm/lightdm.conf.d/50-i3.conf
     install -Dm644 lightdm/50-i3.conf /etc/lightdm/lightdm.conf.d/50-i3.conf
@@ -86,7 +97,7 @@ echo "   set X11 keymap: seinans pc105 (lv3:caps_switch, terminate:ctrl_alt_bksp
 # On an ISO keyboard plain `se` is enough (skip the seinans file above):
 #   localectl set-x11-keymap se pc105
 
-cat <<'EOF'
+cat <<EOF
 
 ✔ System side done.
 
@@ -95,6 +106,8 @@ Still to do (see README):
   2) machine config:  cp examples/{local.conf,display.sh,machine.env} ~/.config/i3/
                       then edit for this box's outputs (xrandr --query | grep connected)
   3) greeter on the wrong monitor?  see examples/lightdm-display-setup.sh
-  4) AUR browser (optional): paru/yay -> zen-browser-bin   (spotify-launcher is in the official repos)
+  4) browser (optional):
+       Arch:    paru/yay -> waterfox-bin   (spotify-launcher is in the official repos)
+       Debian:  Waterfox release tarball, or your distro's package — see the README
   5) reboot and pick i3 in LightDM
 EOF
