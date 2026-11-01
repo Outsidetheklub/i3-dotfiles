@@ -1,0 +1,86 @@
+#!/bin/sh
+# resolve-audio — make clips playable in DaVinci Resolve on Linux.
+#
+# DaVinci Resolve (free) ships no AAC decoder on Linux: clips import fine but
+# play silently. The fix is a remux — copy the video stream untouched, convert
+# only the audio to PCM, which Resolve does decode. Fast, and no video quality
+# is lost (the file does get much bigger: PCM is uncompressed).
+#
+#   resolve-audio clip.mp4 dir/ ...   convert; writes <name>_dr.mov beside input
+#   resolve-audio --watch             poll the dirs in the watch config forever
+#
+# Watch config: ~/.config/resolve-audio-watch.dirs (one dir per line, ~ allowed).
+# Files already ending in _dr, already converted, or with non-AAC audio are skipped.
+set -u
+
+WATCH_CONF="$HOME/.config/resolve-audio-watch.dirs"
+DEFAULT_DIRS="$HOME/Downloads
+$HOME/Videos"
+
+log() { echo "resolve-audio: $*" >&2; }
+
+is_aac() {
+    # csv=p=0 prints one codec name per audio stream; no audio stream = empty
+    ffprobe -v error -select_streams a:0 -show_entries stream=codec_name \
+        -of csv=p=0 -- "$1" 2>/dev/null | grep -qi aac
+}
+
+convert() {
+    in="$1"
+    case "$in" in
+        *_dr.mov) return 0 ;;
+    esac
+    [ -f "$in" ] || return 0
+    dir=$(dirname -- "$in"); base=$(basename -- "$in"); stem=${base%.*}
+    out="$dir/${stem}_dr.mov"
+    if [ -e "$out" ]; then return 0; fi
+    if ! is_aac "$in"; then return 0; fi
+    log "converting $base -> ${stem}_dr.mov"
+    if ffmpeg -hide_banner -loglevel error -nostdin -i "$in" \
+            -c:v copy -c:a pcm_s16le -movflags +faststart "$out" 2>>"${TMPDIR:-/tmp}/resolve-audio.log"; then
+        log "done: $out"
+    else
+        log "FAILED: $in (see ${TMPDIR:-/tmp}/resolve-audio.log)"
+        rm -f "$out"
+    fi
+}
+
+watch_dirs() {
+    if [ -f "$WATCH_CONF" ]; then
+        sed -e "s/#.*//" -e "/^[[:space:]]*$/d" "$WATCH_CONF"
+    else
+        printf "%s\n" "$DEFAULT_DIRS"
+    fi
+}
+
+watch_loop() {
+    log "watching: $(watch_dirs | tr "\n" " ")"
+    while :; do
+        watch_dirs | while IFS= read -r d; do
+            # ~ in the config is literal; expand it here
+            case "$d" in "~/"*) d="$HOME/${d#\~/}" ;; esac
+            [ -d "$d" ] || continue
+            find "$d" -maxdepth 2 -type f \
+                 \( -iname "*.mp4" -o -iname "*.mov" -o -iname "*.mkv" -o -iname "*.m4v" \) 2>/dev/null |
+            while IFS= read -r f; do convert "$f"; done
+        done
+        sleep 10
+    done
+}
+
+[ "$#" -gt 0 ] || { echo "usage: resolve-audio FILE|DIR ... | --watch" >&2; exit 2; }
+
+if [ "$1" = "--watch" ]; then
+    watch_loop
+    exit 0
+fi
+
+for arg in "$@"; do
+    if [ -d "$arg" ]; then
+        find "$arg" -maxdepth 2 -type f \
+             \( -iname "*.mp4" -o -iname "*.mov" -o -iname "*.mkv" -o -iname "*.m4v" \) 2>/dev/null |
+        while IFS= read -r f; do convert "$f"; done
+    else
+        convert "$arg"
+    fi
+done
