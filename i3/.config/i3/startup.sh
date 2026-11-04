@@ -24,7 +24,10 @@ fi
 # Night light — only when this machine has a location configured. Unset means we
 # simply don't start redshift (no wrong-location tint for anyone else's clone).
 if [ -n "${REDSHIFT_LOCATION:-}" ]; then
-    pgrep -x redshift >/dev/null 2>&1 || redshift -l "$REDSHIFT_LOCATION" &
+    # -t/-m passed explicitly: redshift refuses to parse the config file on this
+    # box ("Unable to load config file", even for a minimal one), so it silently
+    # fell back to 6500/4500 defaults and the tint was much weaker than intended.
+    pgrep -x redshift >/dev/null 2>&1 || redshift -l "$REDSHIFT_LOCATION" -t 6500:3500 -m randr &
 fi
 
 # Background: none — solid black. i3/X have no wallpaper of their own; the root
