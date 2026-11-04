@@ -25,10 +25,11 @@ done
 
 target="$playing"
 if [ -z "$target" ]; then
-    case " $players " in
-        *" spotify_player "*) target="spotify_player" ;;
-        *) target=$(printf '%s\n' $players | head -n 1) ;;
-    esac
+    if printf '%s\n' $players | grep -qx 'spotify_player'; then
+        target="spotify_player"
+    else
+        target=$(printf '%s\n' $players | head -n 1)
+    fi
 fi
 
 exec playerctl -p "$target" "$cmd"
