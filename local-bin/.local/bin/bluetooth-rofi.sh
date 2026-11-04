@@ -41,7 +41,16 @@ fi
 
 # ── Build the menu ────────────────────────────────────────────────────
 menu=""
-paired=$(bluetoothctl devices Paired 2>/dev/null)
+# BlueZ's "devices Paired" filter is unreliable (it returned nothing while
+# `info` still said Paired: yes), so list every known device and check the
+# property per device instead.
+paired=$(bluetoothctl devices 2>/dev/null | while IFS= read -r _line; do
+    _mac=$(printf '%s' "$_line" | awk '{print $2}')
+    [ -n "$_mac" ] || continue
+    if bluetoothctl info "$_mac" 2>/dev/null | grep -q 'Paired: yes'; then
+        printf '%s\n' "$_line"
+    fi
+done)
 if [ -n "$paired" ]; then
     paired_menu=$(printf '%s\n' "$paired" | while IFS= read -r line; do
         [ -z "$line" ] && continue
