@@ -35,6 +35,14 @@ fi
 # uncomment the feh line (image must exist) —
 # feh --bg-fill "$HOME/Pictures/Wallpapers/52HVcjStCQTsaDJWzEt946.jpg"
 xsetroot -solid "#000000"
+# Kill LightDM's leftover wallpaper. The greeter paints Debian's login
+# background into a 1920x1080 root pixmap and leaves _XROOTPMAP_ID /
+# ESETROOT_PMAP_ID pointing at it; those properties outlive the greeter.
+# xsetroot only sets the background pixel, so with nothing else done picom
+# paints the root from the stale pixmap — the Debian 13 wallpaper appeared on
+# empty workspaces the moment VSync was switched on (2026-11-04). Clearing the
+# properties makes picom fall back to the black pixel set above.
+xprop -root -remove _XROOTPMAP_ID -remove ESETROOT_PMAP_ID 2>/dev/null || true
 
 # Polkit auth agent (so Thunar can ask for a password to mount drives etc).
 # The wrapper finds whichever agent package is installed and no-ops if none is;
