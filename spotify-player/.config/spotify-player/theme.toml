@@ -36,7 +36,7 @@ playback_artists = { fg = "White" }
 playback_album = { fg = "BrightBlack" }
 playback_genres = { fg = "BrightBlack", modifiers = ["Italic"] }
 playback_metadata = { fg = "BrightBlack" }
-playback_progress_bar = { fg = "#767676" }
+playback_progress_bar = { fg = "White", bg = "Black" }
 playback_progress_bar_unfilled = { fg = "BrightBlack" }
 current_playing = { fg = "White", modifiers = ["Bold"] }
 page_desc = { fg = "White", modifiers = ["Bold"] }
