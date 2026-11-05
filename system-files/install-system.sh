@@ -92,8 +92,29 @@ echo "══ 5/6 keyboard layout (Swedish, < > | reachable on an ANSI board)"
 backup /etc/X11/xorg.conf.d/00-keyboard.conf
 install -Dm644 ../xkb/.config/xkb/symbols/seinans /usr/share/X11/xkb/symbols/seinans
 echo "   installed /usr/share/X11/xkb/symbols/seinans"
-localectl set-x11-keymap seinans pc105 "" lv3:caps_switch,terminate:ctrl_alt_bksp
-echo "   set X11 keymap: seinans pc105 (lv3:caps_switch, terminate:ctrl_alt_bksp)"
+# On 2026-11-05 localectl failed here with "Failed to set keymap: Access denied"
+# even under sudo: it goes through systemd-localed over D-Bus, and a bare X
+# session may have no polkit agent to authorise the call. The config it would
+# write is small and stable, so fall back to writing it directly rather than
+# leaving the box on plain `se` while the script reports success.
+if ! localectl set-x11-keymap seinans pc105 "" lv3:caps_switch,terminate:ctrl_alt_bksp 2>/dev/null \
+     || ! localectl status 2>/dev/null | grep -q 'X11 Layout: seinans'; then
+    cat > /etc/X11/xorg.conf.d/00-keyboard.conf <<'EOF'
+Section "InputClass"
+    Identifier "system-keyboard"
+    MatchIsKeyboard "on"
+    Option "XkbLayout" "seinans"
+    Option "XkbModel" "pc105"
+    Option "XkbOptions" "lv3:caps_switch,terminate:ctrl_alt_bksp"
+EndSection
+EOF
+    sed -i -e 's|^XKBLAYOUT=.*|XKBLAYOUT="seinans"|' \
+           -e 's|^XKBOPTIONS=.*|XKBOPTIONS="lv3:caps_switch,terminate:ctrl_alt_bksp"|' \
+           /etc/default/keyboard
+    echo "   localectl unavailable; wrote 00-keyboard.conf + /etc/default/keyboard directly"
+else
+    echo "   set X11 keymap: seinans pc105 (lv3:caps_switch, terminate:ctrl_alt_bksp)"
+fi
 # On an ISO keyboard plain `se` is enough (skip the seinans file above):
 #   localectl set-x11-keymap se pc105
 
