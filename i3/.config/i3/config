@@ -121,7 +121,7 @@ bindsym $mod+w layout tabbed
 # ── Split ───────────────────────────────────────────────
 bindsym $mod+Ctrl+h split h
 bindsym $mod+Ctrl+v split v
-bindsym $mod+Ctrl+Backslash layout toggle split
+bindsym $mod+Ctrl+backslash layout toggle split
 
 # ── Scratchpad ──────────────────────────────────────────
 bindsym $mod+Shift+minus move scratchpad
@@ -174,8 +174,8 @@ mode "resize" {
 bindsym $mod+r mode "resize"
 
 # ── Media keys ──────────────────────────────────────────
-bindsym XF86AudioRaiseVolume exec --no-startup-id sh -c 'wpctl set-mute -l 1 @DEFAULT_AUDIO_SINK@ 0; wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+'
-bindsym XF86AudioLowerVolume exec --no-startup-id sh -c 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 0; wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-'
+bindsym XF86AudioRaiseVolume exec --no-startup-id sh -c 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 && wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+'
+bindsym XF86AudioLowerVolume exec --no-startup-id sh -c 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 && wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-'
 bindsym XF86AudioMute exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
 bindsym XF86AudioMicMute exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
 bindsym XF86AudioPlay exec ~/.local/bin/mpris play-pause
