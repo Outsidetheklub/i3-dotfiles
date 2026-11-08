@@ -1,0 +1,40 @@
+#!/bin/sh
+# net-when-slow — capture the network state at the moment it feels slow.
+#
+# Writes a timestamped block to ~/.local/state/net-when-slow.log, so that
+# "it was slow last night" becomes a measurement instead of a memory. Run it
+# when it feels sluggish, two or three times, and it shows whether it is signal,
+# retries, ping or raw throughput that wobbles — and whether it lines up with a
+# time of day (ISP evenings) or just happens (WiFi).
+#
+# Takes ~50 s: three 10 MB downloads, 15 s apart.
+set -u
+
+LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}"
+LOG="$LOG_DIR/net-when-slow.log"
+mkdir -p "$LOG_DIR"
+
+BLOCK() {
+    echo "=== $(date "+%Y-%m-%d %H:%M:%S") ==="
+    CONN=$(nmcli -t -f DEVICE,STATE,CONNECTION device status | awk -F: '$1=="wlan0"{print $3}')
+    echo "connection: ${CONN:-unknown}"
+    nmcli -f IN-USE,SSID,SIGNAL,CHAN,RATE device wifi list --rescan no 2>/dev/null |
+        grep "^\*" | sed "s/^/  wifi: /"
+    awk '/wlan0/{print "  quality=" $3 " signal=" $4 " retry=" $7 " misc=" $8}' /proc/net/wireless 2>/dev/null
+    echo "  iwlwifi power_save: $(cat /sys/module/iwlwifi/parameters/power_save 2>/dev/null || echo n/a)"
+    echo "  ping 1.1.1.1:"
+    ping -c 10 -i 0.2 -q 1.1.1.1 2>/dev/null | tail -2 | sed "s/^/    /"
+    echo "  download (OVH 10 MB, 15 s apart):"
+    i=1
+    while [ "$i" -le 3 ]; do
+        S=$(curl -s -o /dev/null -w "%{speed_download}" --max-time 30 https://proof.ovh.net/files/10Mb.dat)
+        KB=$(awk -v s="$S" "BEGIN{printf \"%.0f\", s/1024}")
+        echo "    #$i ${KB} KB/s"
+        [ "$i" -lt 3 ] && sleep 15
+        i=$((i + 1))
+    done
+    echo ""
+}
+
+BLOCK | tee -a "$LOG"
+echo "saved to $LOG"
