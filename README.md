@@ -653,3 +653,14 @@ Problems actually hit while installing this on real machines:
   `~/.xprofile` still applies it too, as a fallback for machines where the
   system-side step wasn't run (`setxkbmap -I` can't see `~/.config/xkb`, hence the
   `... -print | xkbcomp -I"$HOME/.config/xkb" - "$DISPLAY"` pipeline).
+- **Updating the machine: `sysup`** — one command for the whole stack, because apt,
+  DKMS and flatpak can disagree silently. It upgrades, then makes flatpak's
+  driver-matched NVIDIA runtime match the installed driver
+  (`org.freedesktop.Platform.GL.nvidia-<ver>`), drops the stale one, and finally
+  cross-checks kernel / loaded module / Xorg driver / sandbox runtime and says
+  whether you're done, need a logout, or need a reboot. `sysup --check` verifies
+  without changing anything (exit 1 = something to fix).
+  ⚠️ Why it exists: apt moving `nvidia-driver` 615 → 620 does **not** touch flatpak.
+  The sandbox then has no NVIDIA Vulkan ICD, every flatpak app falls back to mesa —
+  on the NVIDIA box that means the iGPU — and nothing anywhere reports an error.
+
