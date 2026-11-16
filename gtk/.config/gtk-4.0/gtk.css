@@ -122,3 +122,4 @@ window treeview.view radio:selected, window textview text:selected,
 window calendar:selected, window scrolledwindow list, window decoration {
     border-radius: 0;
 }
+@import 'colors.css';

@@ -173,22 +173,9 @@
     margin: 3px 0 -3px -2px;
 }
 
-.thunar header.top tabs .reorderable-page {
-    margin: 0;
-    transition: all ease 300ms;
-}
-.thunar header.top tabs .reorderable-page + .reorderable-page {
-    margin: 0 0 0 10px;
-}
-
-.thunar header.top tabs .reorderable-page:hover {
-    background-color: alpha(#ffffff, 0.08);
-}
-
-.thunar header.top tabs .reorderable-page:checked {
-    color: #ffffff;
-    background-color: alpha(#ffffff, 0.20);
-}
+/* Tabs are styled once, further down ("[text] chips, dim until active").
+   This block used to redefine the same selectors with a white selected label,
+   which is what made a checked tab white-on-white. */
 
 /* =============================================================================
    Sidebar Navigation
@@ -505,7 +492,8 @@ menu separator {
     background: none;
     color: #ffffff;
 }
-.thunar header.top tabs .reorderable-page:checked {
+.thunar header.top tabs .reorderable-page:checked,
+.thunar header.top tabs .reorderable-page:checked label {
     background-color: #ffffff;
     color: #000000;
 }
