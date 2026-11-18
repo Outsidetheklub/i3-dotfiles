@@ -12,3 +12,7 @@ i3/.config/i3/machine.env
 i3/.config/i3/display.sh
 i3/.config/i3/local.conf
 gtk/.config/gtk-3.0/bookmarks
+
+# OpenClaw handoff archives contain MEMORY.md / SOUL.md / memory/ — personal, never repo material.
+openclaw-handoff-*.tar.gz
+openclaw-handoff/

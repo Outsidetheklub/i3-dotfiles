@@ -27,7 +27,13 @@ if [ -n "${REDSHIFT_LOCATION:-}" ]; then
     # -t/-m passed explicitly: redshift refuses to parse the config file on this
     # box ("Unable to load config file", even for a minimal one), so it silently
     # fell back to 6500/4500 defaults and the tint was much weaker than intended.
-    pgrep -x redshift >/dev/null 2>&1 || redshift -l "$REDSHIFT_LOCATION" -t 6500:3500 -m randr &
+    # A session switch leaves the previous session's redshift alive, holding a
+    # connection to an X server that no longer exists: it still answers pgrep, so
+    # the old guard skipped starting a fresh one and the tint silently vanished
+    # (measured gamma 1.0:1.0:1.0 while "redshift was running", 2026-11-18).
+    # Kill the orphan, then start one bound to *this* X server.
+    pkill -x redshift 2>/dev/null && sleep 0.3
+    redshift -l "$REDSHIFT_LOCATION" -t 6500:3500 -m randr &
 fi
 
 # Background: none — solid black. i3/X have no wallpaper of their own; the root

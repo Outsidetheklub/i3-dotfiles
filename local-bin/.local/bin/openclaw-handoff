@@ -1,0 +1,63 @@
+#!/bin/sh
+# openclaw-handoff — package this machine's OpenClaw memory, persona files and learned
+# skills so another box can catch up. Deliberately dumb: no repo, no daemon, no state.
+#
+#   openclaw-handoff              -> write the tarball to ~/Downloads
+#   openclaw-handoff <tailnode>   -> write it, then Taildrop it to that node
+#
+# What this does NOT carry (by design — re-enter these on the new machine):
+#   * the OpenClaw runtime        -> npm i -g openclaw  (needs node)
+#   * ~/.openclaw/openclaw.json   -> models/providers/gateway settings + API keys
+#   * channel credentials         -> whatever you paired (webchat tokens etc.)
+#
+# On the receiving machine:
+#   mkdir -p ~/openclaw-handoff && tar xzf openclaw-handoff-*.tar.gz -C ~/openclaw-handoff
+#   then merge into ~/.openclaw (persona files into workspace/, skills into agents/)
+set -eu
+
+DATE=$(date +%Y-%m-%d)
+OUT=${OUT:-$HOME/Downloads}
+ARCHIVE="$OUT/openclaw-handoff-$DATE.tar.gz"
+NODE=${1:-}
+
+[ -d "$HOME/.openclaw" ] || { echo "no ~/.openclaw here" >&2; exit 1; }
+
+PATHS=""
+for p in \
+  workspace/MEMORY.md \
+  workspace/AGENTS.md \
+  workspace/SOUL.md \
+  workspace/USER.md \
+  workspace/IDENTITY.md \
+  workspace/BOOTSTRAP.md \
+  workspace/DREAMS.md \
+  workspace/memory \
+  agents/main/agent/workshop-skills
+do
+  [ -e "$HOME/.openclaw/$p" ] && PATHS="$PATHS $p"
+done
+[ -n "$PATHS" ] || { echo "nothing to package" >&2; exit 1; }
+
+mkdir -p "$OUT"
+# --exclude the skill archive history: it's noise for a fresh machine and 90% of the size
+# shellcheck disable=SC2086
+tar czf "$ARCHIVE" --exclude='*/.archive' --exclude='*/node_modules' -C "$HOME/.openclaw" $PATHS
+
+echo "wrote $ARCHIVE ($(du -h "$ARCHIVE" | cut -f1))"
+echo "contents:"
+# shellcheck disable=SC2086
+tar tzf "$ARCHIVE" | awk -F/ '{print "  " $1 "/" $2 (NF>2 ? "/..." : "")}' | sort -u
+
+echo
+echo "still manual on the new machine:"
+echo "  1. node + npm i -g openclaw"
+echo "  2. ~/.openclaw/openclaw.json (models, providers, gateway, API keys)"
+echo "  3. channel/pairing credentials"
+
+if [ -z "$NODE" ]; then
+  echo
+  echo "send it with: tailscale file cp \"$ARCHIVE\" <node>:"
+else
+  tailscale file cp "$ARCHIVE" "$NODE:"
+  echo "sent to $NODE"
+fi
